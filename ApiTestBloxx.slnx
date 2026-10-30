@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ApiTestBloxx.Application/ApiTestBloxx.Application.csproj" />
+    <Project Path="src/ApiTestBloxx.Domain/ApiTestBloxx.Domain.csproj" />
+    <Project Path="src/ApiTestBloxx.Infrastructure/ApiTestBloxx.Infrastructure.csproj" />
+    <Project Path="src/ApiTestBloxx.Web/ApiTestBloxx.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ApiTestBloxx.Application.Tests/ApiTestBloxx.Application.Tests.csproj" />
+    <Project Path="tests/ApiTestBloxx.Domain.Tests/ApiTestBloxx.Domain.Tests.csproj" />
+    <Project Path="tests/ApiTestBloxx.Infrastructure.IntegrationTests/ApiTestBloxx.Infrastructure.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

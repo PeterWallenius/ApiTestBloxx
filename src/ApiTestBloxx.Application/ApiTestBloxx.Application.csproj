@@ -1,0 +1,7 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ApiTestBloxx.Domain\ApiTestBloxx.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

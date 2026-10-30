@@ -1,0 +1,71 @@
+name: Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: infra
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Azure resources
+    runs-on: ubuntu-latest
+    env:
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      # Read by readEnvironmentVariable() in infra/main.bicepparam.
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate
+        run: |
+          az deployment group validate \
+            --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/main.bicepparam \
+            --output none
+
+      - name: What-if
+        run: |
+          az deployment group what-if \
+            --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/main.bicepparam \
+            --result-format ResourceIdOnly
+
+      - name: Deploy
+        id: deploy
+        run: |
+          az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "infra-${{ github.run_number }}" \
+            --parameters infra/main.bicepparam \
+            --query properties.outputs \
+            --output json > outputs.json
+          echo "webAppUrl=$(jq -r .webAppUrl.value outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "keyVaultName=$(jq -r .keyVaultName.value outputs.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Infrastructure deployed"
+            echo "- Web App: ${{ steps.deploy.outputs.webAppUrl }}"
+            echo "- Key Vault: ${{ steps.deploy.outputs.keyVaultName }}"
+          } >> "$GITHUB_STEP_SUMMARY"
