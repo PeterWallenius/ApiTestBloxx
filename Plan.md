@@ -49,12 +49,12 @@ flowchart LR
 | 60 CPU-minutter pr. dag, 1 GB RAM, 1 GB disk | Appen stopper midlertidigt (HTTP 403) ved overskridelse | Tilstrækkeligt til få brugere; følg `CpuTime` under Web App → Metrics i portalen (gratis platform-metrics) |
 | Ingen Always On | Appen går i dvale efter ca. 20 min uden trafik; første kald har cold start | Blazor reconnect-UI; smoke test i pipeline med retry |
 | Max 5 samtidige WebSocket-forbindelser | Max ca. 5 samtidige Blazor-brugere | Acceptabelt for test; opgradér til B1 ved behov |
-| Ingen deployment slots, custom domain eller skalering | Kun `*.azurewebsites.net` | Staging løses evt. med ekstra Web App på samme F1-plan |
+| Ingen deployment slots, custom domain eller skalering | Kun `*.azurewebsites.net` | Der arbejdes ikke med staging i projektet |
 | Typisk kun én Free Linux-plan pr. region pr. subscription | Deployment fejler, hvis der allerede findes én | Subscription har allerede en Free Linux-plan i West Europe (whistregnskab) → løsningen placeres i **Denmark East**, hvor F1 Linux er tilgængelig |
 
 Opgradering til B1 kræver kun ændring af `app_service_sku` (variabel i `infra/variables.tf`) og en kørsel af `infra.yml`.
 
-**Staging:** Ingen deployment slots på F1. Anbefaling: start med én Web App. Behov for staging løses med en ekstra Web App på samme F1-plan (stadig 0 kr.). Beslutning tages i fase 6.
+**Staging:** Der arbejdes ikke med staging i dette projekt (besluttet). Der er én produktions-Web App; `main` deployes direkte til `production`, og smoke test mod `/health` samt rollback via `artifact-run-id` dækker fejl efter deploy. Dette afviger bevidst fra staging-fladen i [CLAUDE.md](CLAUDE.md).
 
 ### RBAC (mindst privilegium)
 
@@ -386,7 +386,7 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [x] `ci.yml` for PR (build/test, ApiSpecs-hash, `terraform validate`; køres altid, ikke kun ved `infra/**`).
 - [x] `deploy-app.yml` ved push til `main` med smoke test og rollback via `artifact-run-id`.
 - [x] GitHub environment `production` (uden manuel godkendelse).
-- [ ] Beslutning om staging (ekstra Web App på samme F1-plan eller ingen staging).
+- [x] Staging: fravalgt (én produktions-Web App).
 - [ ] Easy Auth (Entra ID) aktiveret på Web App via Terraform.
 
 ### Fase 7 — Drift og dokumentation
@@ -400,6 +400,6 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 1. ~~Hvordan autentificeres mod Bloxx?~~ Kortlivet `x-id-token` indtastet i UI nu, OAuth2 senere (afklaret). Er der IP-whitelisting, der kræver fast udgående IP?
 2. Skal der testes mod flere Bloxx-miljøer (test/prod) fra samme app?
 3. Hvem skal have adgang til appen (Entra ID-gruppe)?
-4. Er staging-miljø nødvendigt fra start, eller er én produktions-Web App tilstrækkeligt?
+4. ~~Er staging-miljø nødvendigt?~~ Nej, der arbejdes ikke med staging (afklaret).
 5. ~~Foretrukken Azure-region?~~ Denmark East (afklaret).
 6. Er F1-begrænsningerne (max ca. 5 samtidige brugere, cold start, 60 CPU-min/dag) acceptable, eller skal B1 bruges fra start?
