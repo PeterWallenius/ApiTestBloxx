@@ -23,7 +23,7 @@ Plan for opbygning af en end-to-end løsning til test af API-kald mod **Amundi A
 ```mermaid
 flowchart LR
     User["Bruger (browser)"] -- "HTTPS + Entra ID login" --> App["App Service: Blazor Server (.NET 10)"]
-    App -- "Managed Identity" --> KV["Key Vault (Bloxx credentials)"]
+    App -- "Managed Identity" --> KV["Key Vault (OAuth2 client secret, senere)"]
     App -- "Managed Identity" --> ST["Storage Account: Table Storage (LRS)"]
     App -- "HTTPS (x-id-token, senere OAuth2)" --> Bloxx["Amundi Alto Bloxx API'er"]
     GH["GitHub Actions"] -- "OIDC (azure/login)" --> Azure["Azure Resource Group"]
@@ -36,7 +36,7 @@ flowchart LR
 | App Service Plan | Linux **F1 (Free)** — 0 kr. | Hosting af Blazor Server |
 | Web App | .NET 10, System-assigned Managed Identity, WebSockets **on**, HTTPS only, `/health` endpoint (bruges af smoke test i pipeline) | Applikationen |
 | Storage Account | StorageV2, **Standard_LRS**, shared key access **disabled** | Table Storage (testhistorik, gemte requests) |
-| Key Vault | Standard, RBAC-model | Bloxx client id/secret, evt. certifikater |
+| Key Vault | Standard, RBAC-model | Bloxx OAuth2 client id/secret (senere), evt. certifikater |
 
 **Begrundelse for App Service frem for Container Apps:** Blazor Server kræver vedvarende SignalR-forbindelser og har lav trafik; App Service F1 er gratis og har simpel drift uden container-registry.
 
@@ -172,6 +172,7 @@ Prompten i `.github/prompts/generate-api-client.prompt.md` skal sikre, at Claude
 - `NavMenu.razor`: `MudNavMenu` med:
   1. **Client profile** → `/apis/client-profile`
   2. (Kommende API'er tilføjes nedenunder)
+- **`IdTokenInput`-komponent** (i `MudAppBar`, fælles for alle API-sider): maskeret `MudTextField` til `x-id-token` (JWT, udløber efter ca. 1 time). Viser udløbstid læst fra JWT'ens `exp`-claim og en tydelig status, når tokenet er udløbet eller mangler. Send-knapper er deaktiveret uden gyldigt token.
 - `ClientProfilePage.razor`:
   - Liste over operationer i API'et (fra proxy/spec).
   - Formular til parametre (path/query/body) med inputvalidering.
@@ -199,8 +200,12 @@ Prompten i `.github/prompts/generate-api-client.prompt.md` skal sikre, at Claude
 ## 7. Konfiguration og hemmeligheder
 
 - `BloxxApiOptions` (sektion `BloxxApi`, IOptions, valideret med `ValidateDataAnnotations().ValidateOnStart()`): `BaseUrl`, `AuthMode` (`ApiKey` | `OAuth2`).
-- **Autentifikation — nu (`ApiKey`):** Bloxx kræver headeren `x-id-token` med en fast nøgle. Nøglen ligger kun i **Key Vault** som secret `BloxxApi--IdToken` (`--` bliver til `:` → `BloxxApi:IdToken`) og indlæses via `AddAzureKeyVault(...)` med `DefaultAzureCredential`.
-- **Autentifikation — senere (`OAuth2`, når sandbox er tilgængelig):** tilføj `TokenUrl`, `ClientId`, `Scope` til `BloxxApiOptions` og secret `BloxxApi--ClientSecret` i Key Vault. Handleren henter token (client credentials), cacher det til udløb og sætter det på kaldet. Skift sker via `AuthMode`; proxyklasserne er upåvirkede.
+- **Autentifikation — nu (`ApiKey`):** Bloxx kræver headeren `x-id-token` med et kortlivet JWT (ca. 1 time). Tokenet **indtastes i Blazor-UI'et** (`IdTokenInput`) og lægges **ikke** i Key Vault, konfiguration eller Table Storage.
+  - Tokenet holdes i en `scoped` tjeneste (`IBloxxTokenStore`, én instans pr. Blazor-circuit, kun i hukommelsen). Auth-`DelegatingHandler` læser det fra tjenesten ved hvert kald og sætter `x-id-token`.
+  - Ingen persistering i browseren (ingen `localStorage`/cookie): tokenet forsvinder, når circuit afsluttes, og skal indtastes igen. Det er med vilje.
+  - Tokenet logges aldrig og maskeres i historik og UI (se afsnit 6). Fejlsvar fra `401/403` giver en tydelig besked om, at tokenet kan være udløbet.
+  - Ikke delt mellem brugere: hver bruger indtaster sit eget token.
+- **Autentifikation — senere (`OAuth2`, når sandbox er tilgængelig):** tilføj `TokenUrl`, `ClientId`, `Scope` til `BloxxApiOptions` og secret `BloxxApi--ClientSecret` i Key Vault (indlæses via `AddAzureKeyVault(...)` med `DefaultAzureCredential`). `IdTokenInput` skjules, når `AuthMode` er `OAuth2`. Handleren henter token (client credentials), cacher det til udløb og sætter det på kaldet. Skift sker via `AuthMode`; proxyklasserne er upåvirkede.
 - Headerværdien maskeres i historik og UI (se afsnit 6).
 - Lokal udvikling: `dotnet user-secrets` — aldrig secrets i `appsettings*.json` eller i repo.
 - App settings i Web App sættes af Terraform (Key Vault URI, Storage endpoint).
@@ -331,7 +336,7 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 ## 12. Faser og leverancer
 
 ### Fase 0 — Forudsætninger
-- [x] Afklar Bloxx-autentifikation: fast nøgle i headeren `x-id-token` nu; OAuth2 når sandbox er tilgængelig.
+- [x] Afklar Bloxx-autentifikation: kortlivet `x-id-token` indtastes i UI'et nu; OAuth2 når sandbox er tilgængelig.
 - [ ] Afklar Bloxx miljø-URL'er.
 - [ ] Hent `spec.openapi.json` for **Client profile**.
 - [x] Azure subscription (`Pay-As-You-Go-PW`), region (Denmark East) og resource group (`rg-apitestbloxx`).
@@ -353,20 +358,21 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [x] Separat state-storage (`rg-apitestbloxx-tfstate`) + rolletildelinger + GitHub variables.
 - [x] `infra.yml` (fmt → init → validate → plan → apply).
 - [x] Første kørsel af `infra.yml` med Terraform (ved push til `main`).
-- [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt).
+- [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt) — først nødvendigt, når OAuth2 indføres (`BloxxApi--ClientSecret`).
 
 ### Fase 3 — API-spec og proxy
 - [ ] `ApiSpecs/ClientProfile/spec.openapi.json`.
 - [ ] `.github/prompts/generate-api-client.prompt.md`.
 - [ ] Generér `src/ApiTestBloxx.Infrastructure/ApiClients/ClientProfile.cs`.
-- [ ] Læg `BloxxApi--IdToken` i Key Vault (manuelt).
-- [ ] Bloxx auth-`DelegatingHandler` (`x-id-token`), logging-handler, DI-registrering.
+- [ ] `IBloxxTokenStore` (scoped, kun hukommelse) og Bloxx auth-`DelegatingHandler` (`x-id-token` fra token store), logging-handler, DI-registrering.
+- [ ] Enhedstest: handler sætter headeren, mangler token → tydelig fejl, token maskeres i log/historik.
 - [ ] Senere: OAuth2-variant af auth-handleren (token-cache) når sandbox er klar.
 - [ ] Tests mod WireMock.Net.
 
 ### Fase 4 — Blazor frontend
 - [x] MudBlazor-opsætning, `MainLayout` med AppBar "Bloxx API Test" og sidebar-drawer.
 - [x] `NavMenu` med **Client profile** som første menupunkt (side er placeholder indtil fase 3).
+- [ ] `IdTokenInput` i AppBar (maskeret felt, udløbstid fra `exp`, advarsel ved udløb).
 - [ ] `ClientProfilePage` med request-editor, response-viewer og historik.
 - [x] `/health` endpoint.
 
@@ -389,7 +395,7 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 
 ## 13. Åbne spørgsmål
 
-1. ~~Hvordan autentificeres mod Bloxx?~~ Fast nøgle i `x-id-token` nu, OAuth2 senere (afklaret). Er der IP-whitelisting, der kræver fast udgående IP?
+1. ~~Hvordan autentificeres mod Bloxx?~~ Kortlivet `x-id-token` indtastet i UI nu, OAuth2 senere (afklaret). Er der IP-whitelisting, der kræver fast udgående IP?
 2. Skal der testes mod flere Bloxx-miljøer (test/prod) fra samme app?
 3. Hvem skal have adgang til appen (Entra ID-gruppe)?
 4. Er staging-miljø nødvendigt fra start, eller er én produktions-Web App tilstrækkeligt?
