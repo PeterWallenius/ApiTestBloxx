@@ -20,14 +20,24 @@ jobs:
   deploy:
     name: Deploy Azure resources
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
     env:
-      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-      # Read by readEnvironmentVariable() in infra/main.bicepparam.
-      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
-      AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      TF_VAR_resource_group_name: ${{ vars.AZURE_RESOURCE_GROUP }}
+      TF_VAR_web_app_name: ${{ secrets.AZURE_WEBAPP_NAME }}
+      TF_INPUT: 'false'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -36,36 +46,29 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Init
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}"
+
       - name: Validate
-        run: |
-          az deployment group validate \
-            --resource-group "$RESOURCE_GROUP" \
-            --parameters infra/main.bicepparam \
-            --output none
+        run: terraform validate
 
-      - name: What-if
-        run: |
-          az deployment group what-if \
-            --resource-group "$RESOURCE_GROUP" \
-            --parameters infra/main.bicepparam \
-            --result-format ResourceIdOnly
+      - name: Plan
+        run: terraform plan -out=tfplan -lock-timeout=5m
 
-      - name: Deploy
-        id: deploy
-        run: |
-          az deployment group create \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "infra-${{ github.run_number }}" \
-            --parameters infra/main.bicepparam \
-            --query properties.outputs \
-            --output json > outputs.json
-          echo "webAppUrl=$(jq -r .webAppUrl.value outputs.json)" >> "$GITHUB_OUTPUT"
-          echo "keyVaultName=$(jq -r .keyVaultName.value outputs.json)" >> "$GITHUB_OUTPUT"
+      - name: Apply
+        run: terraform apply -lock-timeout=5m tfplan
 
       - name: Summary
         run: |
           {
             echo "### Infrastructure deployed"
-            echo "- Web App: ${{ steps.deploy.outputs.webAppUrl }}"
-            echo "- Key Vault: ${{ steps.deploy.outputs.keyVaultName }}"
+            echo "- Web App: $(terraform output -raw web_app_url)"
+            echo "- Key Vault: $(terraform output -raw key_vault_name)"
           } >> "$GITHUB_STEP_SUMMARY"

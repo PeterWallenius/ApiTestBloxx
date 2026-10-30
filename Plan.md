@@ -52,7 +52,7 @@ flowchart LR
 | Ingen deployment slots, custom domain eller skalering | Kun `*.azurewebsites.net` | Staging løses evt. med ekstra Web App på samme F1-plan |
 | Typisk kun én Free Linux-plan pr. region pr. subscription | Deployment fejler, hvis der allerede findes én | Subscription har allerede en Free Linux-plan i West Europe (whistregnskab) → løsningen placeres i **Denmark East**, hvor F1 Linux er tilgængelig |
 
-Opgradering til B1 kræver kun ændring af SKU-parameteren i `main.bicepparam` og en kørsel af `infra.yml`.
+Opgradering til B1 kræver kun ændring af `app_service_sku` (variabel i `infra/variables.tf`) og en kørsel af `infra.yml`.
 
 **Staging:** Ingen deployment slots på F1. Anbefaling: start med én Web App. Behov for staging løses med en ekstra Web App på samme F1-plan (stadig 0 kr.). Beslutning tages i fase 6.
 
@@ -75,7 +75,7 @@ ApiTestBloxx/
 ├─ .github/
 │  ├─ workflows/
 │  │  ├─ ci.yml                    # Build + test på pull requests
-│  │  ├─ infra.yml                 # Pipeline 1: Bicep-deployment af Azure-ressourcer
+│  │  ├─ infra.yml                 # Pipeline 1: Terraform-deployment af Azure-ressourcer
 │  │  └─ deploy-app.yml            # Pipeline 2: Build, test, publish, deploy ved push til main
 │  ├─ prompts/
 │  │  └─ generate-api-client.prompt.md   # Fast prompt til Claude: spec -> proxyklasse
@@ -83,14 +83,12 @@ ApiTestBloxx/
 ├─ ApiSpecs/
 │  └─ ClientProfile/
 │     └─ spec.openapi.json         # Én underfolder pr. API, filnavn er altid spec.openapi.json
-├─ infra/
-│  ├─ main.bicep
-│  ├─ main.bicepparam
-│  └─ modules/
-│     ├─ appService.bicep
-│     ├─ storage.bicep
-│     ├─ keyVault.bicep
-│     └─ roleAssignments.bicep
+├─ infra/                          # Terraform (azurerm 5.x), state i separat storage account
+│  ├─ versions.tf                  # Providers, backend (azurerm, Entra ID-auth)
+│  ├─ variables.tf
+│  ├─ main.tf                      # Storage, Key Vault, App Service, RBAC
+│  ├─ outputs.tf
+│  └─ .terraform.lock.hcl          # Pinnede providerversioner (committes)
 ├─ src/
 │  ├─ ApiTestBloxx.Domain/         # Entiteter, value objects (fx ApiCallRecord), ingen afhængigheder
 │  ├─ ApiTestBloxx.Application/    # Use cases, interfaces (IApiCallHistoryRepository, IBloxxApiCatalog), DTO'er
@@ -205,7 +203,7 @@ Prompten i `.github/prompts/generate-api-client.prompt.md` skal sikre, at Claude
 - **Autentifikation — senere (`OAuth2`, når sandbox er tilgængelig):** tilføj `TokenUrl`, `ClientId`, `Scope` til `BloxxApiOptions` og secret `BloxxApi--ClientSecret` i Key Vault. Handleren henter token (client credentials), cacher det til udløb og sætter det på kaldet. Skift sker via `AuthMode`; proxyklasserne er upåvirkede.
 - Headerværdien maskeres i historik og UI (se afsnit 6).
 - Lokal udvikling: `dotnet user-secrets` — aldrig secrets i `appsettings*.json` eller i repo.
-- App settings i Web App sættes af Bicep (Key Vault URI, Storage endpoint).
+- App settings i Web App sættes af Terraform (Key Vault URI, Storage endpoint).
 
 ---
 
@@ -240,12 +238,22 @@ IDs står ikke her, da repoet er public. Se dem med `gh secret list` / `az ad sp
 | `AZURE_CLIENT_ID` | Client ID for `sp-github-apitestbloxx` | `infra.yml`, `deploy-app.yml` |
 | `AZURE_SUBSCRIPTION_ID` | Subscription ID for `Pay-As-You-Go-PW` | `infra.yml`, `deploy-app.yml` |
 | `AZURE_TENANT_ID` | Tenant ID | `infra.yml`, `deploy-app.yml` |
-| `AZURE_WEBAPP_NAME` | `app-apitestbloxx` (navn verificeret ledigt) | `infra.yml` (parameter til Bicep), `deploy-app.yml` |
+| `AZURE_WEBAPP_NAME` | `app-apitestbloxx` (navn verificeret ledigt) | `infra.yml` (`TF_VAR_web_app_name`), `deploy-app.yml` |
 
 | Variable | Værdi |
 |---|---|
 | `AZURE_RESOURCE_GROUP` | `rg-apitestbloxx` |
 | `AZURE_LOCATION` | `denmarkeast` |
+| `TFSTATE_RESOURCE_GROUP` | `rg-apitestbloxx-tfstate` |
+| `TFSTATE_STORAGE_ACCOUNT` | `stapitestbloxxtfstate` |
+| `TFSTATE_CONTAINER` | `tfstate` |
+
+### Terraform state
+
+- State ligger i et separat storage account (`stapitestbloxxtfstate`, container `tfstate`, resource group `rg-apitestbloxx-tfstate`) med versioning og soft delete (7 dage). Shared key er slået fra; backend bruger Entra ID (`use_azuread_auth`).
+- Opsat manuelt én gang med `az` (høne-og-æg: state kan ikke styre sit eget lager). Pipeline-SP'en og udvikleren har `Storage Blob Data Contributor` på kontoen.
+- Lokal kørsel: `terraform init -backend-config="resource_group_name=..." -backend-config="storage_account_name=..." -backend-config="container_name=tfstate"` og `TF_VAR_resource_group_name`, `TF_VAR_web_app_name`.
+- Resource group `rg-apitestbloxx` oprettes ikke af Terraform (den findes og bærer SP'ens rolletildelinger); den læses som data source.
 
 ---
 
@@ -263,20 +271,21 @@ Trigger: `pull_request` mod `main`.
 4. `dotnet build -c Release` (warnings as errors)
 5. `dotnet test` (unit + integration med Azurite som service container)
 6. Tjek af ApiSpecs ↔ ApiClients (afsnit 4)
-7. `az bicep build` + `az deployment group what-if` (kun visning) for ændringer i `infra/**`
+7. `terraform fmt -check`, `terraform init -backend=false` + `terraform validate` for ændringer i `infra/**`
 
 ### Pipeline 1: `infra.yml` — Azure-ressourcer
 
 Trigger: `workflow_dispatch` + `push` til `main` med `paths: infra/**`.
 
 1. Checkout
-2. `azure/login@v2` (OIDC)
-3. `az deployment group validate`
-4. `az deployment group what-if`
-5. `az deployment group create` med `main.bicep` og `webAppName=${{ secrets.AZURE_WEBAPP_NAME }}`
-6. Output: Web App URL, Key Vault navn
+2. `hashicorp/setup-terraform` (version pinnet)
+3. `azure/login@v2` (OIDC)
+4. `terraform fmt -check`, `init` (remote backend), `validate`
+5. `terraform plan -out=tfplan`
+6. `terraform apply tfplan`
+7. Output: Web App URL, Key Vault navn
 
-Bicep er idempotent, så pipelinen kan køres igen uden sideeffekter.
+Terraform er deklarativ og idempotent, så pipelinen kan køres igen uden sideeffekter. `concurrency` + state lock forhindrer parallelle kørsler.
 
 ### Pipeline 2: `deploy-app.yml` — Kode ved commit til `main`
 
@@ -300,7 +309,7 @@ Trigger: `push` til `main` med `paths: src/**, tests/**, ApiSpecs/**, Directory.
 
 Log Analytics slås fra for at minimere omkostninger. Da nye Application Insights-ressourcer altid kræver en Log Analytics Workspace, fravælges Application Insights også. Observability løses med gratis indbyggede funktioner:
 
-- **Applikationslogs:** `ILogger` til console; App Service-logs slås til med filesystem-lagring (kvote fx 35 MB, retention 3 dage) via Bicep. Læses med Log stream i portalen eller `az webapp log tail`.
+- **Applikationslogs:** `ILogger` til console; App Service-logs slås til med filesystem-lagring (kvote fx 35 MB, retention 3 dage) via Terraform. Læses med Log stream i portalen eller `az webapp log tail`.
 - **Logniveauer:** `Warning`+ for framework, `Information` for egen kode.
 - **Platform-metrics** (gratis, 93 dages historik): HTTP 5xx, responstid, `CpuTime`, hukommelse — ses under Web App → Metrics.
 - **Bloxx-kald:** statuskode, varighed og maskeret request/response gemmes i Table Storage-tabellen `ApiCallHistory` (afsnit 6) og fungerer som audit-log.
@@ -340,9 +349,10 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [x] Resource group + rolletildelinger (Contributor + betinget RBAC Administrator).
 - [x] Secrets: `AZURE_CLIENT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`, `AZURE_WEBAPP_NAME`; variables: `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`.
 - [x] GitHub environment `production`.
-- [x] Bicep-moduler (App Service inkl. filesystem-logs, Storage, Key Vault, RBAC) — valideret med `what-if` (12 ressourcer).
-- [x] `infra.yml` (validate → what-if → deploy).
-- [x] Første kørsel af `infra.yml` (ved push til `main`).
+- [x] Terraform-konfiguration (App Service inkl. filesystem-logs, Storage, Key Vault, RBAC) i `infra/` — erstatter den første Bicep-version (CLAUDE.md kræver Terraform).
+- [x] Separat state-storage (`rg-apitestbloxx-tfstate`) + rolletildelinger + GitHub variables.
+- [x] `infra.yml` (fmt → init → validate → plan → apply).
+- [ ] Første kørsel af `infra.yml` med Terraform (ved push til `main`).
 - [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt).
 
 ### Fase 3 — API-spec og proxy
@@ -369,7 +379,7 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [ ] `deploy-app.yml` ved push til `main` med smoke test.
 - [ ] GitHub environment `production` (evt. manuel godkendelse).
 - [ ] Beslutning om staging (ekstra Web App på samme F1-plan eller ingen staging).
-- [ ] Easy Auth (Entra ID) aktiveret på Web App via Bicep.
+- [ ] Easy Auth (Entra ID) aktiveret på Web App via Terraform.
 
 ### Fase 7 — Drift og dokumentation
 - [ ] README: struktur, lokal opstart (Azurite, user-secrets), build og deploy.
