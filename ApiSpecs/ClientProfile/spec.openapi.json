@@ -1,0 +1,1986 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "description": "Creation and management of client profiles",
+        "version": "v1",
+        "title": "Client Profiling",
+        "license": {
+            "name": "aixigo Software License",
+            "url": "https://demo.portal.aixigo.cloud/client-profiling/license"
+        }
+    },
+    "tags": [
+        {
+            "name": "risk-profile"
+        },
+        {
+            "name": "knowledge-and-experience"
+        },
+        {
+            "name": "events"
+        }
+    ],
+    "paths": {
+        "/risk-profiles": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/ownerIds"
+                },
+                {
+                    "$ref": "#/components/parameters/Accept-Language"
+                }
+            ],
+            "post": {
+                "summary": "Creates a new risk profile",
+                "description": "Creates a new risk profile for a given owner constellation, corresponding to the requested tags.\nThis risk profile is not activated and intended for filling in. For filling in and activation of\nthis risk profile use its provided location from the HAL self-link or from the HTTP Location\nheader. Answers in the risk profile are already provided as far as possible if the 'createEmpty' \nquery param is set to false (default), based on the\ncurrently activated risk profile.\nIf there is already an activated risk profile for the given ownerId, \nit will be used to select the correct questionnaire (if no other tag was provided) \nand provide the owner’s previous answers.\n",
+                "tags": [
+                    "risk-profile"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/createEmptyRisk"
+                    },
+                    {
+                        "name": "underage",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": "Enable handling for underage account holders."
+                    },
+                    {
+                        "$ref": "#/components/parameters/tags"
+                    }
+                ],
+                "operationId": "createRiskProfile",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_RISK_PROFILE",
+                                        "grant": "READ_WRITE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The new risk profile for editing.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Last-Modified": {
+                                "description": "The 'Last-Modified' header contains the last modification time for returned risk profile for the given page in RFC2616 format.  Example: Fri, 27 Sep 2019 11:00:00 GMT",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Location": {
+                                "description": "URL of new risk profile",
+                                "schema": {
+                                    "type": "string",
+                                    "format": "url"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "No questionnaire found for the provided set of tags.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Current activated risk profile",
+                "description": "Redirects to the currently activated risk profile for a given owner constellation,\ncorresponding to the selected tags.\nIf no active risk profile exists, returns 404.\n",
+                "tags": [
+                    "risk-profile"
+                ],
+                "operationId": "resolveRiskProfile",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_RISK_PROFILE",
+                                        "grant": "READ"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "Redirect to the current active risk profile\n",
+                        "headers": {
+                            "Location": {
+                                "description": "URL of current risk profile",
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uri"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "The risk profile did not change since the provided If-Modified-Since header"
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Signifies that no currently activated risk profile exists for this owner constellation.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/risk-profiles/{id}": {
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "name": "detailed",
+                    "in": "query",
+                    "required": false,
+                    "schema": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "description": "Enables the provision of consultant documentation."
+                },
+                {
+                    "$ref": "#/components/parameters/Accept-Language"
+                }
+            ],
+            "get": {
+                "summary": "Returns the risk profile by id",
+                "description": "Returns the risk profile with the corresponding id. If it is not yet activated, it can be updated\nusing the `fillRiskProfile` API.\n",
+                "tags": [
+                    "risk-profile"
+                ],
+                "operationId": "getRiskProfile",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_RISK_PROFILE",
+                                        "grant": "READ"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns the riskprofile, including scoring and errors.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "The risk profile did not change since the provided If-Modified-Since header"
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The risk profile with the provided id was not found.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Updates and validates the questionnaire",
+                "description": "Updates the answers and justifications of the questionnaire. The action taken is based on the\nvalidationMode parameter (if given).\n",
+                "tags": [
+                    "risk-profile"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/If-Unmodified-Since"
+                    },
+                    {
+                        "$ref": "#/components/parameters/validationMode"
+                    }
+                ],
+                "operationId": "fillRiskProfile",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_RISK_PROFILE",
+                                        "grant": "READ_WRITE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RiskProfileAnswers"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Returns the updated riskprofile, including scoring and errors.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Last-Modified": {
+                                "description": "The 'Last-Modified' header contains the last modification time for returned risk profile for the given page in RFC2616 format.  Example: Fri, 27 Sep 2019 11:00:00 GMT",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "If the request body is invalid, contains only empty list of answers\nor the given answers for the questionnaire are invalid.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The risk profile with the provided id was not found.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The risk profile with the provided id is not in status NEW!\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "The risk profile changed since the provided If-Unmodified-Since header",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "The If-Unmodified-Since header is missing, but is required",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/risk-profiles/{id}/status": {
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "$ref": "#/components/parameters/Accept-Language"
+                }
+            ],
+            "put": {
+                "summary": "Activates or archives a new risk profile",
+                "description": "If desired new status is ACTIVE it validates and activates the questionnaire for the given id if current status is NEW. Simultaneously an existing ACTIVE questionnaire will be set to state ARCHIVED.\nIf desired new status is ARCHIVED it validates and archive the questionnaire for the given id if current status is ACTIVE.\nAccepted status transitions are NEW->ACTIVE and ACTIVE->ARCHIVED. All other leads to an error.\n",
+                "tags": [
+                    "risk-profile"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/If-Unmodified-Since"
+                    }
+                ],
+                "operationId": "changeStatusOfRiskProfile",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_RISK_PROFILE",
+                                        "grant": "READ_WRITE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StatusQuestionnaire"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Returns the active riskprofile, including scoring.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/RiskProfileQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Last-Modified": {
+                                "description": "The 'Last-Modified' header contains the last modification time for returned risk profile for the given page in RFC2616 format.  Example: Fri, 27 Sep 2019 11:00:00 GMT",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "If given status is unknown, request body can't be parsed (invalid json) or status transition is invalid (NEW->ARCHIVED, ACTIVE/ARCHIVED->NEW)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The risk profile with the provided id was not found.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "The risk-profile changed since the provided If-Unmodified-Since header",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "The If-Unmodified-Since header is missing, but is required",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/knowledge-and-experiences": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/personId"
+                },
+                {
+                    "$ref": "#/components/parameters/Accept-Language"
+                }
+            ],
+            "post": {
+                "summary": "Create a new questionnaire resource",
+                "description": "Creates a new knowledge-and-experience questionnaire for a person. The questionnaire is not\nactivated and intended for filling in. For filling in and activation of this questionnair use its\nprovided location from the HAL self-link or from the HTTP Location header. Answers in the\nquestionnaire are already provided as far as possible, based on the currently activated\nknowledge-and-experiences questionnaire.\n",
+                "tags": [
+                    "knowledge-and-experience"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/createEmptyKnowledge"
+                    },
+                    {
+                        "$ref": "#/components/parameters/tagsRequired"
+                    }
+                ],
+                "operationId": "createKnowledgeAndExperience",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_KNOWLEDGE_EXPERIENCE",
+                                        "grant": "READ_WRITE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Creates new knowledge-and-experience questionnaire",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Last-Modified": {
+                                "description": "The 'Last-Modified' header contains the last modification time for returned knowledge-and-experience questionnaire for the given page in RFC2616 format.  Example: Fri, 27 Sep 2019 11:00:00 GMT",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Location": {
+                                "description": "URL of new resource",
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uri"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "No questionnaire found for the provided set of tags.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Resolve current knowledge-and-experience resource",
+                "description": "Redirects to the currently activated knowledge-and-experience questionnaire for this person.\nIf none exists, returns 404.\n",
+                "tags": [
+                    "knowledge-and-experience"
+                ],
+                "operationId": "resolveKnowledgeAndExperience",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_KNOWLEDGE_EXPERIENCE",
+                                        "grant": "READ"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "Redirect to knowledge-and-experience resource\n",
+                        "headers": {
+                            "Location": {
+                                "description": "URL of current risk profile",
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uri"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "The knowledge-and-experience questionnaire did not change since the provided If-Modified-Since header"
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active questionnaire exists for this person.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/knowledge-and-experiences/{id}": {
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "$ref": "#/components/parameters/Accept-Language"
+                }
+            ],
+            "get": {
+                "summary": "Knowledge and experience questionnaire",
+                "description": "Returns the knowledge and experience questionnaire by id.",
+                "tags": [
+                    "knowledge-and-experience"
+                ],
+                "operationId": "getKnowledgeAndExperience",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_KNOWLEDGE_EXPERIENCE",
+                                        "grant": "READ"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The knowledge and experience questionnaire was found.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "The knowledge-and-experience questionnaire did not change since the provided If-Modified-Since header"
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active questionnaire exists for this person.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Updates and validates the questionnaire",
+                "description": "Updates the answers and justifications of the questionnaire. The action taken is based on the\nvalidationMode parameter (if given).\n",
+                "tags": [
+                    "knowledge-and-experience"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/If-Unmodified-Since"
+                    },
+                    {
+                        "$ref": "#/components/parameters/validationMode"
+                    }
+                ],
+                "operationId": "fillKnowledgeAndExperience",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_KNOWLEDGE_EXPERIENCE",
+                                        "grant": "READ_WRITE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/KnowledgeAndExperienceAnswers"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The  questionnaire.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Last-Modified": {
+                                "description": "The 'Last-Modified' header contains the last modification time for returned knowledge-and-experience questionnaire for the given page in RFC2616 format.  Example: Fri, 27 Sep 2019 11:00:00 GMT",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "If the request body is invalid, contains only empty list of answers\nor the given answers for the questionnaire are invalid.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active questionnaire exists for this person.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "If the questionnaire with given id is not in status NEW \nsince only questionnaires in status NEW are allowed to be filled out (changed).\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "The questionnaire changed since the provided If-Unmodified-Since header",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "The If-Unmodified-Since header is missing, but is required",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/knowledge-and-experiences/{id}/status": {
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "id",
+                    "required": true,
+                    "schema": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "$ref": "#/components/parameters/Accept-Language"
+                }
+            ],
+            "put": {
+                "summary": "Activate or archive a knowledge and experience questionnaire",
+                "description": "If desired new status is ACTIVE it validates and activates the questionnaire for the given id \nif current status is NEW. Simultaneously an existing ACTIVE questionnaire will be set to state ARCHIVED.\nIf desired new status is ARCHIVED it validates and archive the questionnaire for the given id \nif current status is ACTIVE.\nAccepted status transitions are NEW->ACTIVE and ACTIVE->ARCHIVED. All other leads to an error.\n",
+                "tags": [
+                    "knowledge-and-experience"
+                ],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/If-Unmodified-Since"
+                    }
+                ],
+                "operationId": "changeStatusOfKnowledgeAndExperience",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_KNOWLEDGE_EXPERIENCE",
+                                        "grant": "READ_WRITE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StatusQuestionnaire"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Returns the updated knowledge and experience questionnaire\nif status transition was valid (NEW->ACTIVE or ACTIVE->ARCHIVED)\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                }
+                            },
+                            "application/hal+json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/HalResource"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/KnowledgeAndExperienceQuestionnaire"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Last-Modified": {
+                                "description": "The 'Last-Modified' header contains the last modification time for returned knowledge-and-experience questionnaire for the given page in RFC2616 format.  Example: Fri, 27 Sep 2019 11:00:00 GMT",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "If given status is unknown, request body can't be parsed (invalid json) \nor status transition is invalid (NEW->ARCHIVED, ACTIVE/ARCHIVED->NEW)\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Access forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No questionnaire exists for given id.\n",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "The questionnaire changed since the provided If-Unmodified-Since header",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "The If-Unmodified-Since header is missing, but is required",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error with detailed error description",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/events/replay": {
+            "post": {
+                "operationId": "replayEvents",
+                "x-access-control": [
+                    {
+                        "require-all": [
+                            {
+                                "permissions": [
+                                    {
+                                        "privilege": "CP_EVENTS_REPLAY",
+                                        "grant": "READ_WRITE"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Triggers a replay of standardized events.",
+                "description": "Triggers a replay of standardized events for the selected entity types.\nRecipients of the respective topics must handle repeated messages themselves.\n",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplayEventsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Request Accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReplayEventsAccepted"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/version": {
+            "get": {
+                "tags": [
+                    "info"
+                ],
+                "summary": "Retrieves the version information for this service.",
+                "description": "Retrieves the version information for this service, including the artifact name and version, the Git commit hash and the link to the license resource.",
+                "responses": {
+                    "200": {
+                        "description": "The version information was found and is enclosed in the response.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VersionInfo"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/license": {
+            "get": {
+                "tags": [
+                    "info"
+                ],
+                "summary": "Retrieves the license information for this service.",
+                "responses": {
+                    "200": {
+                        "description": "The license information was found and is enclosed in the response.",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health/check": {
+            "get": {
+                "tags": [
+                    "info"
+                ],
+                "summary": "Retrieves the service's current health state.",
+                "description": "Returns an HTTP response code indicating the service's current health state.",
+                "responses": {
+                    "200": {
+                        "description": "The service is up and running and can process requests."
+                    },
+                    "503": {
+                        "description": "The service is up and running but cannot process requests."
+                    }
+                }
+            }
+        },
+        "/health/info": {
+            "get": {
+                "tags": [
+                    "info"
+                ],
+                "summary": "Retrieves information on the service's current health state.",
+                "description": "Returns a JSON document describing the service's current health status.",
+                "responses": {
+                    "200": {
+                        "description": "The request was processed, and the health state information can be found in the enclosed response.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthInfo"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "parameters": {
+            "ownerIds": {
+                "in": "query",
+                "name": "ownerId",
+                "description": "Person ids of the owners that are to be represented by this client profile",
+                "required": true,
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "createEmptyRisk": {
+                "in": "query",
+                "name": "createEmpty",
+                "description": "Controls creation mode.\n- false: If a NEW entity exists it is returned. Otherwise a NEW entity is created with answers copied from the ACTIVE set. If no ACTIVE set exist, then the answer is copied from the most recently ARCHIVED set.\n- true (default): If a NEW entity exists it is returned. Otherwise NEW entity is created without any answers from ACTIVE or ARCHIVE set.\n",
+                "required": true,
+                "schema": {
+                    "type": "boolean",
+                    "default": true
+                }
+            },
+            "createEmptyKnowledge": {
+                "in": "query",
+                "name": "createEmpty",
+                "description": "Controls creation mode.\n- false: A NEW entity is created with answers copied from the ACTIVE set. If no ACTIVE set exist, then the answer is copied from the most recently ARCHIVED set.\n- true (default): A NEW entity is created without any answers from ACTIVE or ARCHIVE set.\n",
+                "required": true,
+                "schema": {
+                    "type": "boolean",
+                    "default": true
+                }
+            },
+            "tags": {
+                "in": "query",
+                "name": "tag",
+                "description": "Tags used identify the correct risk profile questionnaire.\nThis parameter is mandatory if the questionnaire can not be determined from the activated risk profile.\n",
+                "required": false,
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "tagsRequired": {
+                "in": "query",
+                "name": "tag",
+                "description": "Tags used identify the correct questionnaire",
+                "required": true,
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "personId": {
+                "in": "query",
+                "name": "personId",
+                "description": "The personId whose questionnaire is referenced.",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                }
+            },
+            "validationMode": {
+                "in": "query",
+                "name": "validationMode",
+                "description": "What action to take in the API:\n- `VALIDATE`: Update the questionnaire and validate the answers. Mark problems and\n   inconsistencies with error messages in the response. Unanswered questions will not\n   trigger errors. This mode is meant to be used for the initial answering of a questionnaire,\n   before the user tries to activate it.\n- `VALIDATE_FULL`: Update the questionnaire and validate the answers. All problems and\n   inconsistencies will be reported as errors, even those that concern questions which are not\n   answered yet. This mode is meant to use after the user tried to activate the questionnaire,\n   but it still contained inconsistencies or errors. If one would\n   use `VALIDATE` instead, errors for unanswered questions would be dropped.\n",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "VALIDATE",
+                        "VALIDATE_FULL"
+                    ]
+                }
+            },
+            "If-Unmodified-Since": {
+                "in": "header",
+                "name": "If-Unmodified-Since",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "pattern": "^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \\d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \\d{4} \\d{2}:\\d{2}:\\d{2} GMT$"
+                },
+                "description": "The timestamp of the last know change to the entity, provided by the backend as Last-Modified \nheader. The user of the endpoint indicates which version of the entity he is working with in order\nfor the system to be able to determine, whether the user has to update the entity prior to \nmanipulating it.\n"
+            },
+            "Accept-Language": {
+                "in": "header",
+                "name": "Accept-Language",
+                "required": false,
+                "schema": {
+                    "type": "string"
+                },
+                "description": "The locale of the language the resource should return for language selection (default: en)\n"
+            }
+        },
+        "schemas": {
+            "StatusQuestionnaire": {
+                "deprecated": true,
+                "type": "object",
+                "required": [
+                    "status"
+                ],
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "NEW",
+                            "ACTIVE",
+                            "ARCHIVED"
+                        ],
+                        "description": "The current status of the questionnaire. Questionnaires in status NEW are editable, but not yet visible \noutside of the module, status ACTIVE makes the questionnaire immutable, but visible outside of the \nmodule. ACTIVE questionnaires are the ones that are served for a specific owner constellation and there\nis always only one ACTIVE questionnaire per owner constellation. ARCHIVED questionnaire are also immutable\nbut can only be accessed directly via their specific id.\n"
+                    }
+                }
+            },
+            "RiskProfileQuestionnaire": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "questionGroups"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The unique id of the risk profile."
+                    },
+                    "tenant": {
+                        "type": "string",
+                        "description": "The tenant for which this risk profile was created."
+                    },
+                    "lastModified": {
+                        "type": "string",
+                        "pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{3}+\\d{2}:\\d{2}",
+                        "description": "The timestamp of the last modification of the risk profile. This is mostly used to create the \nLast-Modified header.\n"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "NEW",
+                            "ACTIVE",
+                            "ARCHIVED"
+                        ],
+                        "description": "The current status of the questionnaire. Questionnaires in status NEW are editable, but not yet visible outside of the module. \nACTIVE makes the questionnaire immutable, but visible outside of the module. ARCHIVED questionnaire are also immutable.\nThere is always at most one questionnaire in status NEW per owner constellation. The same holds for the status ACTIVE.\nThis is a read-only parameter and when the POST API is called the status is automatically set to NEW.\n"
+                    },
+                    "questionGroups": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/QuestionGroup"
+                        },
+                        "description": "Groups of questions. the grouping is done as part of the questionnaire and solely serve the purpose of\nstructuring the questionnaire. Separate groups might be displayed individually, or specific groups might\nrequire highlighting. \nThe groups also have impact on the evaluation, since the questions of specific groups may have impact on\npartial scores.\n"
+                    },
+                    "statusQuestionnaire": {
+                        "$ref": "#/components/schemas/StatusQuestionnaire"
+                    },
+                    "documentationTexts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DocumentationTexts"
+                        },
+                        "description": "Additional descriptive texts to give more information for context or implications\n"
+                    },
+                    "representativeRestrictions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RepresentativeRestriction"
+                        },
+                        "description": "Restrictions for representatives that are allowed to work with associated contracts. These restrictions\nare meant to limit the representatives to certain strategies, no matter what the representatives risk\nprofile might say.\n\nAn example for this could be a legal representative for a minor that is restricted to use only low-risk\nstrategies.\n"
+                    },
+                    "riskStrategyScore": {
+                        "type": "integer",
+                        "description": "The calculated score for the risk strategy, based on the answers given and the details in the configured \nquestionnaire and algorithm.\n"
+                    },
+                    "calculatedRiskStrategy": {
+                        "type": "string",
+                        "description": "The calculated value for the risk strategy, based on the answers given and the details in the configured \nquestionnaire and algorithm.\n"
+                    },
+                    "riskStrategyResult": {
+                        "type": "string",
+                        "description": "The chosen value for the risk strategy. This defaults to the calculated risk strategy, but can be \noverridden by users choice.\n"
+                    },
+                    "riskStrategyDescriptionHtml": {
+                        "type": "string",
+                        "description": "Descriptive text for the calculated result, explaining the implications of the results reached.\n"
+                    },
+                    "deviatedRiskStrategyDescriptionHtml": {
+                        "type": "string",
+                        "description": "Descriptive text for the chosen result, explaining the implications of the results reached.\n"
+                    },
+                    "riskStrategyDeviationJustification": {
+                        "type": "string",
+                        "description": "A justification provided, explaining the customers deviation of the calculated result."
+                    },
+                    "previousRiskStrategyDeviationJustification": {
+                        "type": "string",
+                        "description": "A previously provided justification, explaining the customers deviation of the calculated result. This\nis used to keep the justification of an older version of the questionnaire, e.g. when creating a new\nquestionnaire, without immediately entering it.\n"
+                    },
+                    "riskAttitudeScore": {
+                        "type": "integer",
+                        "description": "The calculated score for the risk attitude, based on the answers given and the details in the configured \nquestionnaire and algorithm.\n"
+                    },
+                    "riskAttitudeResult": {
+                        "type": "string",
+                        "description": "The calculated value for the risk attitude, based on the answers given and the details in the configured \nquestionnaire and algorithm.\n"
+                    },
+                    "riskCapabilityScore": {
+                        "type": "integer",
+                        "description": "The calculated score for the risk capability, based on the answers given and the details in the configured \nquestionnaire and algorithm.\n"
+                    },
+                    "riskCapabilityResult": {
+                        "type": "string",
+                        "description": "The calculated value for the risk capability, based on the answers given and the details in the configured \nquestionnaire and algorithm.\n"
+                    }
+                }
+            },
+            "DocumentationTexts": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "textHtml"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Technical identifier of the additional documentation text."
+                    },
+                    "textHtml": {
+                        "type": "string",
+                        "description": "Additional documentation provided to the customer. This is configured in the backoffice tool."
+                    }
+                }
+            },
+            "KnowledgeAndExperienceQuestionnaire": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "questionGroups"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The unique id of the knowledge and experience questionnaire."
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "NEW",
+                            "ACTIVE",
+                            "ARCHIVED"
+                        ],
+                        "description": "The current status of the questionnaire. Questionnaires in status NEW are editable, but not yet visible outside of the module. \nACTIVE makes the questionnaire immutable, but visible outside of the module. ARCHIVED questionnaire are also immutable.\nThere is always at most one questionnaire in status NEW per owner constellation. The same holds for the status ACTIVE.\nThis is a read-only parameter and when the POST API is called the status is automatically set to NEW.\n"
+                    },
+                    "tenant": {
+                        "type": "string",
+                        "description": "The tenant for which this knowledge and experience questionnaire was created."
+                    },
+                    "lastModified": {
+                        "type": "string",
+                        "pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{3}+\\d{2}:\\d{2}",
+                        "description": "The timestamp of the last modification of the knowledge and experience questionnaire. This is mostly \nused to create the Last-Modified header.\n"
+                    },
+                    "questionGroups": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/QuestionGroup"
+                        },
+                        "description": "Groups of questions. the grouping is done as part of the questionnaire and solely serve the purpose of\nstructuring the questionnaire. Separate groups might be displayed individually, or specific groups might\nrequire highlighting. \n"
+                    }
+                }
+            },
+            "QuestionGroup": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "questions"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "An id for this group of questions. Can be used in a frontend for presentation\npurposes. I.e., displaying the questions in a certain group in a different way from\nother groups.\n"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "A title for this group of questions if applicable. Can be"
+                    },
+                    "questions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Question"
+                        }
+                    },
+                    "appliesTo": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "Question": {
+                "type": "object",
+                "description": "A single multiple choice question.",
+                "required": [
+                    "id",
+                    "question",
+                    "possibleAnswers",
+                    "errors",
+                    "justificationRequired"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "question": {
+                        "type": "string"
+                    },
+                    "possibleAnswers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PossibleAnswer"
+                        },
+                        "description": "Contains all possible answers to this question.\n"
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AnswerError"
+                        },
+                        "description": "If there is a consistency problem (or similar problem) with this question, a message\nis recorded here to be displayed to the user.\n"
+                    },
+                    "justificationRequired": {
+                        "type": "boolean",
+                        "description": "In case of inconsistencies or errors that can be justified by the user, this value will\nbe set to `true`. The user then has to provide an `Answer` with a filled in\n`justification` field to resolve this inconsistency.\n"
+                    },
+                    "currentJustification": {
+                        "type": "string",
+                        "description": "If a justification was stored for this question, it is given here.\n"
+                    },
+                    "proposedJustification": {
+                        "type": "string",
+                        "description": "If a proposed justification was stored for this question, it is given here.\n"
+                    },
+                    "selectedAnswerId": {
+                        "type": "string",
+                        "description": "The `answerId` from the entry of `possibleAnswers` as chosen by the user. If\nthis field does not exist or is `null` the user did not chose an answer yet.\n"
+                    },
+                    "answerDateTime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-15T10:30:00.000Z",
+                        "description": "The date and time when answer was provided. If not provided, it is saved with\ncurrent date/time when the answer was provided in format YYYY-MM-DDThh:mm:ss.sssZ\n(subset of ISO 8601 / RFC 3339).\n"
+                    }
+                }
+            },
+            "PossibleAnswer": {
+                "description": "A possible answer in a multiple choice question",
+                "type": "object",
+                "required": [
+                    "answerId",
+                    "name"
+                ],
+                "properties": {
+                    "answerId": {
+                        "description": "An identifier to use in `Answer`s. Unique for each question, but not necessarily globally.\n",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The name of the answer to display to the user.\n",
+                        "type": "string"
+                    }
+                }
+            },
+            "AnswerError": {
+                "type": "object",
+                "description": "A error condition attached to a question.\n",
+                "required": [
+                    "errorCode",
+                    "message"
+                ],
+                "properties": {
+                    "errorCode": {
+                        "description": "An id designating the kind of error",
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "RiskProfileAnswers": {
+                "type": "object",
+                "required": [
+                    "answers"
+                ],
+                "properties": {
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Answer"
+                        }
+                    }
+                }
+            },
+            "KnowledgeAndExperienceAnswers": {
+                "type": "object",
+                "required": [
+                    "answers"
+                ],
+                "properties": {
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Answer"
+                        }
+                    }
+                }
+            },
+            "Answer": {
+                "type": "object",
+                "required": [
+                    "questionId",
+                    "answerId"
+                ],
+                "properties": {
+                    "questionId": {
+                        "type": "string"
+                    },
+                    "answerId": {
+                        "type": "string"
+                    },
+                    "justification": {
+                        "type": "string"
+                    },
+                    "answerDateTime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-15T10:30:00.000Z",
+                        "description": "The date and time when answer was provided. If not provided, it is saved with\ncurrent date/time when the answer was provided in format YYYY-MM-DDThh:mm:ss.sssZ\n(subset of ISO 8601 / RFC 3339).\n"
+                    }
+                }
+            },
+            "RepresentativeRestriction": {
+                "type": "object",
+                "required": [
+                    "personId",
+                    "maxRiskStrategy"
+                ],
+                "properties": {
+                    "personId": {
+                        "type": "string",
+                        "description": "The id of the representative that is to be restricted."
+                    },
+                    "maxRiskStrategy": {
+                        "type": "string",
+                        "description": "The risk strategy the representative is restricted to."
+                    }
+                }
+            },
+            "ReplayEventsRequest": {
+                "type": "object",
+                "required": [
+                    "messageType"
+                ],
+                "properties": {
+                    "messageType": {
+                        "type": "array",
+                        "description": "Types of entity messages to replay.\n",
+                        "minItems": 1,
+                        "uniqueItems": true,
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "RISK_PROFILE",
+                                "KNOWLEDGE_AND_EXPERIENCE"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ReplayEventsAccepted": {
+                "type": "object",
+                "required": [
+                    "replayRequestId"
+                ],
+                "properties": {
+                    "requestId": {
+                        "type": "string",
+                        "description": "Unique id of this replay request for auditing."
+                    }
+                }
+            },
+            "VersionInfo": {
+                "type": "object",
+                "properties": {
+                    "project.id": {
+                        "type": "string"
+                    },
+                    "project.groupId": {
+                        "type": "string"
+                    },
+                    "project.artifactId": {
+                        "type": "string"
+                    },
+                    "project.version": {
+                        "type": "string"
+                    },
+                    "project.name": {
+                        "type": "string"
+                    },
+                    "build.time": {
+                        "type": "string"
+                    },
+                    "git.revision": {
+                        "type": "string"
+                    },
+                    "git.url": {
+                        "type": "string"
+                    },
+                    "api": {
+                        "type": "object",
+                        "properties": {
+                            "version": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string",
+                                "format": "url"
+                            }
+                        }
+                    },
+                    "license": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string",
+                                "format": "url"
+                            }
+                        }
+                    }
+                }
+            },
+            "Problem": {
+                "description": "an RFC 7807 problem description.\nThe URIs shown here are may not be associated with content.",
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer",
+                        "example": 404
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "instance": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "additionalProperties": true
+            },
+            "HealthInfo": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "number"
+                    },
+                    "details": {
+                        "type": "string"
+                    }
+                }
+            },
+            "HalResource": {
+                "type": "object",
+                "required": [
+                    "_links"
+                ],
+                "properties": {
+                    "_links": {
+                        "$ref": "#/components/schemas/HalLinks"
+                    },
+                    "_embedded": {
+                        "$ref": "#/components/schemas/HalEmbedded"
+                    }
+                }
+            },
+            "HalLinks": {
+                "type": "object",
+                "required": [
+                    "self"
+                ],
+                "properties": {
+                    "self": {
+                        "$ref": "#/components/schemas/HalSelfLink"
+                    }
+                },
+                "additionalProperties": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/components/schemas/HalLink"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/HalLink"
+                            }
+                        }
+                    ]
+                }
+            },
+            "HalLink": {
+                "type": "object",
+                "required": [
+                    "href"
+                ],
+                "properties": {
+                    "href": {
+                        "type": "string",
+                        "format": "url"
+                    },
+                    "templated": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "HalSelfLink": {
+                "type": "object",
+                "required": [
+                    "href"
+                ],
+                "properties": {
+                    "href": {
+                        "type": "string",
+                        "format": "url"
+                    }
+                }
+            },
+            "HalEmbedded": {
+                "type": "object",
+                "additionalProperties": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/components/schemas/HalResource"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/HalResource"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "servers": [
+        {
+            "url": "https://demo.portal.aixigo.cloud/client-profiling/"
+        }
+    ]
+}

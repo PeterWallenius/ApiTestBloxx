@@ -1,4 +1,5 @@
 using ApiTestBloxx.Web.Components;
+using ApiTestBloxx.Infrastructure;
 using Azure.Identity;
 using MudBlazor.Services;
 
@@ -14,6 +15,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMudServices();
 builder.Services.AddHealthChecks();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 

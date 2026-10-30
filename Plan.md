@@ -95,7 +95,7 @@ ApiTestBloxx/
 │  ├─ ApiTestBloxx.Infrastructure/
 │  │  ├─ ApiClients/               # Genererede proxyklasser: <ApiNavn>.cs
 │  │  │  └─ ClientProfile.cs
-│  │  ├─ Authentication/           # DelegatingHandler: x-id-token (nu), OAuth2 client credentials (senere)
+│  │  ├─ Authentication/           # BloxxTokenStore: x-id-token (nu), OAuth2 client credentials (senere)
 │  │  ├─ Persistence/              # Table Storage repositories (Azure.Data.Tables)
 │  │  └─ DependencyInjection.cs
 │  └─ ApiTestBloxx.Web/            # Blazor Server + MudBlazor (Presentation)
@@ -201,7 +201,7 @@ Prompten i `.github/prompts/generate-api-client.prompt.md` skal sikre, at Claude
 
 - `BloxxApiOptions` (sektion `BloxxApi`, IOptions, valideret med `ValidateDataAnnotations().ValidateOnStart()`): `BaseUrl`, `AuthMode` (`ApiKey` | `OAuth2`).
 - **Autentifikation — nu (`ApiKey`):** Bloxx kræver headeren `x-id-token` med et kortlivet JWT (ca. 1 time). Tokenet **indtastes i Blazor-UI'et** (`IdTokenInput`) og lægges **ikke** i Key Vault, konfiguration eller Table Storage.
-  - Tokenet holdes i en `scoped` tjeneste (`IBloxxTokenStore`, én instans pr. Blazor-circuit, kun i hukommelsen). Auth-`DelegatingHandler` læser det fra tjenesten ved hvert kald og sætter `x-id-token`.
+  - Tokenet holdes i en `scoped` tjeneste (`IBloxxTokenStore`, én instans pr. Blazor-circuit, kun i hukommelsen). Auth-klienten (`BloxxApiClientBase`) læser det fra tjenesten ved hvert kald og sætter `x-id-token` (HttpClientFactory-handlere er ikke circuit-scoped).
   - Ingen persistering i browseren (ingen `localStorage`/cookie): tokenet forsvinder, når circuit afsluttes, og skal indtastes igen. Det er med vilje.
   - Tokenet logges aldrig og maskeres i historik og UI (se afsnit 6). Fejlsvar fra `401/403` giver en tydelig besked om, at tokenet kan være udløbet.
   - Ikke delt mellem brugere: hver bruger indtaster sit eget token.
@@ -361,11 +361,13 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt) — først nødvendigt, når OAuth2 indføres (`BloxxApi--ClientSecret`).
 
 ### Fase 3 — API-spec og proxy
-- [ ] `ApiSpecs/ClientProfile/spec.openapi.json`.
+- [x] `ApiSpecs/ClientProfile/spec.openapi.json`.
 - [ ] `.github/prompts/generate-api-client.prompt.md`.
-- [ ] Generér `src/ApiTestBloxx.Infrastructure/ApiClients/ClientProfile.cs`.
-- [ ] `IBloxxTokenStore` (scoped, kun hukommelse) og Bloxx auth-`DelegatingHandler` (`x-id-token` fra token store), logging-handler, DI-registrering.
-- [ ] Enhedstest: handler sætter headeren, mangler token → tydelig fejl, token maskeres i log/historik.
+- [x] Generér `src/ApiTestBloxx.Infrastructure/ApiClients/ClientProfile.cs` (`IClientProfileClient`, alle 15 operationer).
+- [x] `IBloxxTokenStore` (scoped, kun hukommelse), `BloxxApiClientBase` sætter `x-id-token` fra token store, DI-registrering (`AddInfrastructure`, `BloxxApi:BaseUrl`).
+- [ ] Logging-handler (request/respons til UI-historik).
+- [x] Enhedstest af proxy (token-header, query, Last-Modified/Location, fejl → `BloxxApiException`) med stub-handler.
+- [ ] Enhedstest: mangler token → tydelig fejl, token maskeres i log/historik.
 - [ ] Senere: OAuth2-variant af auth-handleren (token-cache) når sandbox er klar.
 - [ ] Tests mod WireMock.Net.
 

@@ -19,4 +19,8 @@
     <ProjectReference Include="..\..\src\ApiTestBloxx.Infrastructure\ApiTestBloxx.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
 </Project>
