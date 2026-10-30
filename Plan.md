@@ -25,7 +25,7 @@ flowchart LR
     User["Bruger (browser)"] -- "HTTPS + Entra ID login" --> App["App Service: Blazor Server (.NET 10)"]
     App -- "Managed Identity" --> KV["Key Vault (Bloxx credentials)"]
     App -- "Managed Identity" --> ST["Storage Account: Table Storage (LRS)"]
-    App -- "HTTPS (OAuth2 / API key)" --> Bloxx["Amundi Alto Bloxx API'er"]
+    App -- "HTTPS (x-id-token, senere OAuth2)" --> Bloxx["Amundi Alto Bloxx API'er"]
     GH["GitHub Actions"] -- "OIDC (azure/login)" --> Azure["Azure Resource Group"]
 ```
 
@@ -97,7 +97,7 @@ ApiTestBloxx/
 │  ├─ ApiTestBloxx.Infrastructure/
 │  │  ├─ ApiClients/               # Genererede proxyklasser: <ApiNavn>.cs
 │  │  │  └─ ClientProfile.cs
-│  │  ├─ Authentication/           # DelegatingHandler til Bloxx-token (OAuth2 client credentials)
+│  │  ├─ Authentication/           # DelegatingHandler: x-id-token (nu), OAuth2 client credentials (senere)
 │  │  ├─ Persistence/              # Table Storage repositories (Azure.Data.Tables)
 │  │  └─ DependencyInjection.cs
 │  └─ ApiTestBloxx.Web/            # Blazor Server + MudBlazor (Presentation)
@@ -194,14 +194,16 @@ Prompten i `.github/prompts/generate-api-client.prompt.md` skal sikre, at Claude
 
 - Adgang via `TableServiceClient` + `DefaultAzureCredential` (Managed Identity i Azure, Azure CLI-login lokalt).
 - Lokalt og i integrationstests: **Azurite**.
-- Følsomme data (tokens, Authorization-headers) maskeres før lagring.
+- Følsomme data (`x-id-token`, tokens, Authorization-headers) maskeres før lagring.
 
 ---
 
 ## 7. Konfiguration og hemmeligheder
 
-- `BloxxApiOptions` (IOptions, valideret med `ValidateDataAnnotations().ValidateOnStart()`): `BaseUrl`, `TokenUrl`, `ClientId`, `Scope`.
-- `ClientSecret` ligger kun i **Key Vault** og indlæses via `AddAzureKeyVault(...)` med `DefaultAzureCredential`.
+- `BloxxApiOptions` (sektion `BloxxApi`, IOptions, valideret med `ValidateDataAnnotations().ValidateOnStart()`): `BaseUrl`, `AuthMode` (`ApiKey` | `OAuth2`).
+- **Autentifikation — nu (`ApiKey`):** Bloxx kræver headeren `x-id-token` med en fast nøgle. Nøglen ligger kun i **Key Vault** som secret `BloxxApi--IdToken` (`--` bliver til `:` → `BloxxApi:IdToken`) og indlæses via `AddAzureKeyVault(...)` med `DefaultAzureCredential`.
+- **Autentifikation — senere (`OAuth2`, når sandbox er tilgængelig):** tilføj `TokenUrl`, `ClientId`, `Scope` til `BloxxApiOptions` og secret `BloxxApi--ClientSecret` i Key Vault. Handleren henter token (client credentials), cacher det til udløb og sætter det på kaldet. Skift sker via `AuthMode`; proxyklasserne er upåvirkede.
+- Headerværdien maskeres i historik og UI (se afsnit 6).
 - Lokal udvikling: `dotnet user-secrets` — aldrig secrets i `appsettings*.json` eller i repo.
 - App settings i Web App sættes af Bicep (Key Vault URI, Storage endpoint).
 
@@ -320,7 +322,8 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 ## 12. Faser og leverancer
 
 ### Fase 0 — Forudsætninger
-- [ ] Afklar Bloxx-autentifikation (OAuth2 client credentials, API-key eller mTLS) og miljø-URL'er.
+- [x] Afklar Bloxx-autentifikation: fast nøgle i headeren `x-id-token` nu; OAuth2 når sandbox er tilgængelig.
+- [ ] Afklar Bloxx miljø-URL'er.
 - [ ] Hent `spec.openapi.json` for **Client profile**.
 - [x] Azure subscription (`Pay-As-You-Go-PW`), region (Denmark East) og resource group (`rg-apitestbloxx`).
 - [x] Free Linux App Service Plan findes allerede i West Europe → Denmark East valgt (F1 Linux verificeret tilgængelig).
@@ -340,13 +343,15 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [x] Bicep-moduler (App Service inkl. filesystem-logs, Storage, Key Vault, RBAC) — valideret med `what-if` (12 ressourcer).
 - [x] `infra.yml` (validate → what-if → deploy).
 - [x] Første kørsel af `infra.yml` (ved push til `main`).
-- [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt) og læg Bloxx client secret i Key Vault.
+- [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt).
 
 ### Fase 3 — API-spec og proxy
 - [ ] `ApiSpecs/ClientProfile/spec.openapi.json`.
 - [ ] `.github/prompts/generate-api-client.prompt.md`.
 - [ ] Generér `src/ApiTestBloxx.Infrastructure/ApiClients/ClientProfile.cs`.
-- [ ] Bloxx auth-`DelegatingHandler`, logging-handler, DI-registrering.
+- [ ] Læg `BloxxApi--IdToken` i Key Vault (manuelt).
+- [ ] Bloxx auth-`DelegatingHandler` (`x-id-token`), logging-handler, DI-registrering.
+- [ ] Senere: OAuth2-variant af auth-handleren (token-cache) når sandbox er klar.
 - [ ] Tests mod WireMock.Net.
 
 ### Fase 4 — Blazor frontend
@@ -374,7 +379,7 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 
 ## 13. Åbne spørgsmål
 
-1. Hvordan autentificeres mod Bloxx (OAuth2 client credentials, API-key, certifikat)? Er der IP-whitelisting, der kræver fast udgående IP?
+1. ~~Hvordan autentificeres mod Bloxx?~~ Fast nøgle i `x-id-token` nu, OAuth2 senere (afklaret). Er der IP-whitelisting, der kræver fast udgående IP?
 2. Skal der testes mod flere Bloxx-miljøer (test/prod) fra samme app?
 3. Hvem skal have adgang til appen (Entra ID-gruppe)?
 4. Er staging-miljø nødvendigt fra start, eller er én produktions-Web App tilstrækkeligt?
