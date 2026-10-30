@@ -10,7 +10,8 @@ Dette dokument beskriver krav, arkitektur, drift og udviklingsretningslinjer for
 - Backend og forretningslogik i **C# på .NET 10**.  
 - Frontend i **Blazor Server** med komponenter fra **MudBlazor**.  
 - Projektstruktur efter **Clean Architecture**.  
-- Følg moderne Microsoft anbefalinger som kodestandard.  
+- Følg moderne Microsoft anbefalinger som kodestandard. 
+- Anvend terraform til deployment 
 - Kildekode i **GitHub**. **GitHub Actions** til CI/CD og automatisk deployment ved ændringer i `main` branch.
 
 ---

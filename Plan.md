@@ -222,12 +222,12 @@ Prompten i `.github/prompts/generate-api-client.prompt.md` skal sikre, at Claude
 | Subscription | `Pay-As-You-Go-PW` (privat tenant) |
 | Resource group | `rg-apitestbloxx` (Denmark East) |
 | App Registration / Service Principal | `sp-github-apitestbloxx` |
-| Federated credential `github-main` | `repo:PeterWallenius/ApiTestBloxx:ref:refs/heads/main` |
-| Federated credential `github-env-production` | `repo:PeterWallenius/ApiTestBloxx:environment:production` |
+| Federated credential `github-main` | `repo:PeterWallenius@<owner-id>/ApiTestBloxx@<repo-id>:ref:refs/heads/main` |
+| Federated credential `github-env-production` | `repo:PeterWallenius@<owner-id>/ApiTestBloxx@<repo-id>:environment:production` |
 | Roller | Se afsnit 2 (RBAC) |
 | GitHub environment | `production` |
 
-Subject matches case-sensitivt, så owner skal skrives præcis `PeterWallenius`. Jobs der logger ind i Azure skal enten køre på `main` uden environment eller med `environment: production` — andre kombinationer (fx pull requests) får ikke adgang.
+GitHub udsteder OIDC-subject med immutable owner-/repo-ID'er (`owner@id/repo@id`). Det simple format `repo:owner/repo:...` giver `AADSTS700213`. Det præcise subject kan ses i fejlbeskeden fra `azure/login`. Subject matches case-sensitivt. Jobs der logger ind i Azure skal enten køre på `main` uden environment eller med `environment: production` — andre kombinationer (fx pull requests) får ikke adgang.
 
 ### Repository secrets og variables (oprettet)
 
@@ -339,7 +339,7 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [x] GitHub environment `production`.
 - [x] Bicep-moduler (App Service inkl. filesystem-logs, Storage, Key Vault, RBAC) — valideret med `what-if` (12 ressourcer).
 - [x] `infra.yml` (validate → what-if → deploy).
-- [ ] Første kørsel af `infra.yml` (ved push til `main`).
+- [x] Første kørsel af `infra.yml` (ved push til `main`).
 - [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt) og læg Bloxx client secret i Key Vault.
 
 ### Fase 3 — API-spec og proxy
