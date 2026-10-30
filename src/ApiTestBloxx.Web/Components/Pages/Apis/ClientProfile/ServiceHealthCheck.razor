@@ -1,0 +1,18 @@
+@page "/apis/client-profile/service/health-check"
+@inject IClientProfileClient Client
+
+<PageTitle>Health check - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Health check"
+              Method="GET"
+              Path="/client-profiling/health/check"
+              Description="Henter servicens aktuelle helbredstilstand. Ingen parametre; en fejlstatus (fx 503) vises som fejl."
+              Execute="ExecuteAsync" />
+
+@code {
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken)
+    {
+        await Client.GetHealthCheckAsync(cancellationToken);
+        return ApiCallResult.Success("Servicen svarede 200 OK.");
+    }
+}

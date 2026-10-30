@@ -1,0 +1,17 @@
+<MudText Typo="Typo.subtitle2">Svar</MudText>
+@foreach (var row in Rows)
+{
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudTextField @bind-Value="row.QuestionId" Label="questionId" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudTextField @bind-Value="row.AnswerId" Label="answerId" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudTextField @bind-Value="row.Justification" Label="justification (valgfri)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="() => Rows.Remove(row)" aria-label="Fjern svar" />
+    </MudStack>
+}
+<div>
+    <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="() => Rows.Add(new AnswerRow())">Tilføj svar</MudButton>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IList<AnswerRow> Rows { get; set; } = default!;
+}

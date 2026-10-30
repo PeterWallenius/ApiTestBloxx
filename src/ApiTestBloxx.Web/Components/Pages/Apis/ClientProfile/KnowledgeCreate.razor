@@ -1,0 +1,31 @@
+@page "/apis/client-profile/knowledge-and-experiences/create"
+@inject IClientProfileClient Client
+
+<PageTitle>Create knowledge and experience - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Create knowledge and experience"
+              Method="POST"
+              Path="/client-profiling/knowledge-and-experiences"
+              Description="Opretter et nyt spørgeskema for personen."
+              CanSend="@(!string.IsNullOrWhiteSpace(_personId) && InputParser.SplitList(_tags).Length > 0)"
+              Execute="ExecuteAsync">
+    <MudTextField @bind-Value="_personId" Label="personId (påkrævet)" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_tags" Label="tag (påkrævet)" HelperText="Ét eller flere, adskilt af komma eller linjeskift" Variant="Variant.Outlined" />
+    <MudSwitch @bind-Value="_createEmpty" Label="createEmpty (opret uden forhåndsudfyldte svar)" Color="Color.Primary" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+</ApiOperation>
+
+@code {
+    private string? _personId;
+    private string? _tags;
+    private bool _createEmpty = true;
+    private string? _acceptLanguage;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.CreateKnowledgeAndExperienceAsync(
+            _personId!.Trim(),
+            InputParser.SplitList(_tags),
+            _createEmpty,
+            InputParser.NullIfEmpty(_acceptLanguage),
+            cancellationToken));
+}

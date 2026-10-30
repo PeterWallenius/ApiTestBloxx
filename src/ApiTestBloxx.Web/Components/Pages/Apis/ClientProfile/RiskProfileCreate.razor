@@ -1,0 +1,34 @@
+@page "/apis/client-profile/risk-profiles/create"
+@inject IClientProfileClient Client
+
+<PageTitle>Create risk profile - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Create risk profile"
+              Method="POST"
+              Path="/client-profiling/risk-profiles"
+              Description="Opretter en ny risikoprofil for ejerne."
+              CanSend="@(InputParser.SplitList(_ownerIds).Length > 0)"
+              Execute="ExecuteAsync">
+    <MudTextField @bind-Value="_ownerIds" Label="ownerId (påkrævet)" HelperText="Ét eller flere person-id'er, adskilt af komma eller linjeskift" Lines="2" Variant="Variant.Outlined" />
+    <MudSwitch @bind-Value="_createEmpty" Label="createEmpty (opret uden forhåndsudfyldte svar)" Color="Color.Primary" />
+    <MudSwitch @bind-Value="_underage" Label="underage (mindreårig)" Color="Color.Primary" />
+    <MudTextField @bind-Value="_tags" Label="tag (valgfri)" HelperText="Adskilt af komma eller linjeskift" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+</ApiOperation>
+
+@code {
+    private string? _ownerIds;
+    private bool _createEmpty = true;
+    private bool _underage;
+    private string? _tags;
+    private string? _acceptLanguage;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.CreateRiskProfileAsync(
+            InputParser.SplitList(_ownerIds),
+            _createEmpty,
+            _underage,
+            InputParser.SplitList(_tags),
+            InputParser.NullIfEmpty(_acceptLanguage),
+            cancellationToken));
+}

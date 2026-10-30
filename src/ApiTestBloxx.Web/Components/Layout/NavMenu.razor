@@ -1,3 +1,28 @@
 <MudNavMenu>
-    <MudNavLink Href="apis/client-profile" Icon="@Icons.Material.Filled.Person">Client profile</MudNavLink>
+    <MudNavGroup Title="Client profile" Icon="@Icons.Material.Filled.Person" Expanded="true">
+        <MudNavLink Href="apis/client-profile" Match="NavLinkMatch.All">Oversigt</MudNavLink>
+        <MudNavGroup Title="Risk profiles" Expanded="true">
+            <MudNavLink Href="apis/client-profile/risk-profiles/resolve">Resolve (GET)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/risk-profiles/create">Create (POST)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/risk-profiles/get">Get by id (GET)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/risk-profiles/fill">Fill (PUT)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/risk-profiles/status">Change status (PUT)</MudNavLink>
+        </MudNavGroup>
+        <MudNavGroup Title="Knowledge and experience" Expanded="true">
+            <MudNavLink Href="apis/client-profile/knowledge-and-experiences/resolve">Resolve (GET)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/knowledge-and-experiences/create">Create (POST)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/knowledge-and-experiences/get">Get by id (GET)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/knowledge-and-experiences/fill">Fill (PUT)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/knowledge-and-experiences/status">Change status (PUT)</MudNavLink>
+        </MudNavGroup>
+        <MudNavGroup Title="Events" Expanded="true">
+            <MudNavLink Href="apis/client-profile/events/replay">Replay events (POST)</MudNavLink>
+        </MudNavGroup>
+        <MudNavGroup Title="Service" Expanded="true">
+            <MudNavLink Href="apis/client-profile/service/version">Version (GET)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/service/license">License (GET)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/service/health-check">Health check (GET)</MudNavLink>
+            <MudNavLink Href="apis/client-profile/service/health-info">Health info (GET)</MudNavLink>
+        </MudNavGroup>
+    </MudNavGroup>
 </MudNavMenu>

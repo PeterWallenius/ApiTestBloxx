@@ -1,0 +1,15 @@
+@page "/apis/client-profile/service/license"
+@inject IClientProfileClient Client
+
+<PageTitle>License - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="License"
+              Method="GET"
+              Path="/client-profiling/license"
+              Description="Henter licensoplysninger for servicen. Ingen parametre."
+              Execute="ExecuteAsync" />
+
+@code {
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.GetLicenseAsync(cancellationToken));
+}

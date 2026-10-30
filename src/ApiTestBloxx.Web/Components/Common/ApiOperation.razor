@@ -1,0 +1,105 @@
+@using System.Diagnostics
+@using ApiTestBloxx.Application.Bloxx
+
+<MudText Typo="Typo.h4">@Title</MudText>
+<MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-2">
+    <b>@Method</b> <code>@Path</code>
+</MudText>
+@if (!string.IsNullOrEmpty(Description))
+{
+    <MudText Class="mb-4">@Description</MudText>
+}
+
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudStack Spacing="2">
+        @ChildContent
+        <div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendAsync" Disabled="@(_busy || !CanSend)">Send</MudButton>
+        </div>
+    </MudStack>
+</MudPaper>
+
+@if (_busy)
+{
+    <MudProgressLinear Indeterminate="true" Class="mb-4" />
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-2">@_error</MudAlert>
+    @if (!string.IsNullOrWhiteSpace(_errorBody))
+    {
+        <MudPaper Class="pa-3 mb-4" Outlined="true" Style="overflow:auto;max-height:500px"><pre class="ma-0">@_errorBody</pre></MudPaper>
+    }
+}
+
+@if (_result is not null)
+{
+    <MudAlert Severity="Severity.Success" Class="mb-2">Gennemført på @_elapsedMs ms@(_result.Note is null ? "" : " - " + _result.Note)</MudAlert>
+    @if (_result.LastModified is not null)
+    {
+        <MudText Typo="Typo.body2"><b>Last-Modified:</b> <code>@_result.LastModified</code></MudText>
+    }
+    @if (_result.Location is not null)
+    {
+        <MudText Typo="Typo.body2"><b>Location:</b> <code>@_result.Location</code></MudText>
+    }
+    @if (!string.IsNullOrEmpty(_result.Body))
+    {
+        <MudPaper Class="pa-3 mt-2" Outlined="true" Style="overflow:auto;max-height:600px"><pre class="ma-0">@_result.Body</pre></MudPaper>
+    }
+}
+
+@code {
+    private bool _busy;
+    private string? _error;
+    private string? _errorBody;
+    private long _elapsedMs;
+    private ApiCallResult? _result;
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Method { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Path { get; set; } = string.Empty;
+
+    [Parameter] public string? Description { get; set; }
+
+    [Parameter] public bool CanSend { get; set; } = true;
+
+    [Parameter, EditorRequired] public Func<CancellationToken, Task<ApiCallResult>> Execute { get; set; } = default!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task SendAsync()
+    {
+        _busy = true;
+        _error = null;
+        _errorBody = null;
+        _result = null;
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            _result = await Execute(CancellationToken.None);
+        }
+        catch (BloxxApiException ex)
+        {
+            _error = ex.Message;
+            _errorBody = ex.ResponseBody;
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = $"Kaldet kunne ikke gennemføres: {ex.Message}";
+        }
+        catch (OperationCanceledException)
+        {
+            _error = "Kaldet fik timeout eller blev afbrudt.";
+        }
+        finally
+        {
+            _elapsedMs = stopwatch.ElapsedMilliseconds;
+            _busy = false;
+        }
+    }
+}

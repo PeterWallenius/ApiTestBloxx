@@ -1,0 +1,36 @@
+@page "/apis/client-profile/events/replay"
+@inject IClientProfileClient Client
+
+<PageTitle>Replay events - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Replay events"
+              Method="POST"
+              Path="/client-profiling/events/replay"
+              Description="Udløser genafspilning af standardiserede events for de valgte beskedtyper."
+              CanSend="@(_riskProfile || _knowledgeAndExperience)"
+              Execute="ExecuteAsync">
+    <MudText Typo="Typo.subtitle2">messageType</MudText>
+    <MudCheckBox @bind-Value="_riskProfile" Label="RISK_PROFILE" Color="Color.Primary" />
+    <MudCheckBox @bind-Value="_knowledgeAndExperience" Label="KNOWLEDGE_AND_EXPERIENCE" Color="Color.Primary" />
+</ApiOperation>
+
+@code {
+    private bool _riskProfile = true;
+    private bool _knowledgeAndExperience;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken)
+    {
+        List<ReplayMessageType> types = [];
+        if (_riskProfile)
+        {
+            types.Add(ReplayMessageType.RiskProfile);
+        }
+
+        if (_knowledgeAndExperience)
+        {
+            types.Add(ReplayMessageType.KnowledgeAndExperience);
+        }
+
+        return ApiCallResult.From(await Client.ReplayEventsAsync(new ReplayEventsRequest { MessageType = types }, cancellationToken));
+    }
+}

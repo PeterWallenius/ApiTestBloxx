@@ -1,0 +1,25 @@
+@page "/apis/client-profile/knowledge-and-experiences/get"
+@inject IClientProfileClient Client
+
+<PageTitle>Get knowledge and experience - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Get knowledge and experience"
+              Method="GET"
+              Path="/client-profiling/knowledge-and-experiences/{id}"
+              Description="Henter et spørgeskema via id. Notér Last-Modified til brug ved Fill og Change status."
+              CanSend="@(!string.IsNullOrWhiteSpace(_id))"
+              Execute="ExecuteAsync">
+    <MudTextField @bind-Value="_id" Label="id (påkrævet)" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+</ApiOperation>
+
+@code {
+    private string? _id;
+    private string? _acceptLanguage;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.GetKnowledgeAndExperienceAsync(
+            _id!.Trim(),
+            InputParser.NullIfEmpty(_acceptLanguage),
+            cancellationToken));
+}

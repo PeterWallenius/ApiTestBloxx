@@ -1,0 +1,28 @@
+@page "/apis/client-profile/risk-profiles/get"
+@inject IClientProfileClient Client
+
+<PageTitle>Get risk profile - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Get risk profile"
+              Method="GET"
+              Path="/client-profiling/risk-profiles/{id}"
+              Description="Henter en risikoprofil via id. Notér Last-Modified til brug ved Fill og Change status."
+              CanSend="@(!string.IsNullOrWhiteSpace(_id))"
+              Execute="ExecuteAsync">
+    <MudTextField @bind-Value="_id" Label="id (påkrævet)" Variant="Variant.Outlined" />
+    <MudSwitch @bind-Value="_detailed" Label="detailed (inkluder udvidede detaljer)" Color="Color.Primary" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+</ApiOperation>
+
+@code {
+    private string? _id;
+    private bool _detailed;
+    private string? _acceptLanguage;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.GetRiskProfileAsync(
+            _id!.Trim(),
+            _detailed,
+            InputParser.NullIfEmpty(_acceptLanguage),
+            cancellationToken));
+}

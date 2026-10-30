@@ -1,0 +1,40 @@
+@page "/apis/client-profile/risk-profiles/fill"
+@inject IClientProfileClient Client
+
+<PageTitle>Fill risk profile - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Fill risk profile"
+              Method="PUT"
+              Path="/client-profiling/risk-profiles/{id}"
+              Description="Opdaterer og validerer besvarelserne. Kræver Last-Modified fra seneste svar (If-Unmodified-Since)."
+              CanSend="@(!string.IsNullOrWhiteSpace(_id) && !string.IsNullOrWhiteSpace(_ifUnmodifiedSince) && InputParser.HasCompleteAnswers(_rows))"
+              Execute="ExecuteAsync">
+    <MudTextField @bind-Value="_id" Label="id (påkrævet)" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_ifUnmodifiedSince" Label="If-Unmodified-Since (påkrævet)" HelperText="Last-Modified fra Get/Create, fx Fri, 27 Sep 2019 11:00:00 GMT" Variant="Variant.Outlined" />
+    <MudSelect T="ValidationMode?" @bind-Value="_validationMode" Label="validationMode" Variant="Variant.Outlined" Clearable="true">
+        <MudSelectItem T="ValidationMode?" Value="@ValidationMode.Validate">VALIDATE</MudSelectItem>
+        <MudSelectItem T="ValidationMode?" Value="@ValidationMode.ValidateFull">VALIDATE_FULL</MudSelectItem>
+    </MudSelect>
+    <MudSwitch @bind-Value="_detailed" Label="detailed (inkluder udvidede detaljer)" Color="Color.Primary" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+    <AnswersEditor Rows="_rows" />
+</ApiOperation>
+
+@code {
+    private readonly List<AnswerRow> _rows = [new()];
+    private string? _id;
+    private string? _ifUnmodifiedSince;
+    private ValidationMode? _validationMode;
+    private bool _detailed;
+    private string? _acceptLanguage;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.FillRiskProfileAsync(
+            _id!.Trim(),
+            new RiskProfileAnswers { Answers = InputParser.ToAnswers(_rows) },
+            _ifUnmodifiedSince!.Trim(),
+            _validationMode,
+            _detailed,
+            InputParser.NullIfEmpty(_acceptLanguage),
+            cancellationToken));
+}

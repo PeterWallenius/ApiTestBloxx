@@ -1,0 +1,15 @@
+@page "/apis/client-profile/service/health-info"
+@inject IClientProfileClient Client
+
+<PageTitle>Health info - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Health info"
+              Method="GET"
+              Path="/client-profiling/health/info"
+              Description="Henter oplysninger om servicens helbredstilstand. Ingen parametre."
+              Execute="ExecuteAsync" />
+
+@code {
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.GetHealthInfoAsync(cancellationToken));
+}

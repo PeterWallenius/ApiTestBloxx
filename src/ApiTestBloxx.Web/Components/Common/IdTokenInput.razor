@@ -1,0 +1,18 @@
+@using ApiTestBloxx.Application.Bloxx
+@inject IBloxxTokenStore TokenStore
+
+<MudTextField T="string"
+              Value="@TokenStore.Token"
+              ValueChanged="OnTokenChanged"
+              Label="x-id-token"
+              Placeholder="Indsæt id-token (JWT, gælder ca. 1 time)"
+              InputType="InputType.Password"
+              Variant="Variant.Outlined"
+              Margin="Margin.Dense"
+              Immediate="false"
+              Style="min-width:360px"
+              Class="mr-2" />
+
+@code {
+    private void OnTokenChanged(string? token) => TokenStore.Token = token;
+}

@@ -1,0 +1,25 @@
+@page "/apis/client-profile/risk-profiles/resolve"
+@inject IClientProfileClient Client
+
+<PageTitle>Resolve risk profile - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Resolve risk profile"
+              Method="GET"
+              Path="/client-profiling/risk-profiles"
+              Description="Finder den aktive risikoprofil for ejerne. Svaret er en omdirigering (303) til profilen; 304 betyder uændret."
+              CanSend="@(InputParser.SplitList(_ownerIds).Length > 0)"
+              Execute="ExecuteAsync">
+    <MudTextField @bind-Value="_ownerIds" Label="ownerId (påkrævet)" HelperText="Ét eller flere person-id'er, adskilt af komma eller linjeskift" Lines="2" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+</ApiOperation>
+
+@code {
+    private string? _ownerIds;
+    private string? _acceptLanguage;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.FromLocation(await Client.ResolveRiskProfileAsync(
+            InputParser.SplitList(_ownerIds),
+            InputParser.NullIfEmpty(_acceptLanguage),
+            cancellationToken));
+}

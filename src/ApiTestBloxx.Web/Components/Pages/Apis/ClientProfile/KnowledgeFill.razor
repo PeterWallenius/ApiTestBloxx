@@ -1,0 +1,37 @@
+@page "/apis/client-profile/knowledge-and-experiences/fill"
+@inject IClientProfileClient Client
+
+<PageTitle>Fill knowledge and experience - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Fill knowledge and experience"
+              Method="PUT"
+              Path="/client-profiling/knowledge-and-experiences/{id}"
+              Description="Opdaterer og validerer besvarelserne. Kræver Last-Modified fra seneste svar (If-Unmodified-Since)."
+              CanSend="@(!string.IsNullOrWhiteSpace(_id) && !string.IsNullOrWhiteSpace(_ifUnmodifiedSince) && InputParser.HasCompleteAnswers(_rows))"
+              Execute="ExecuteAsync">
+    <MudTextField @bind-Value="_id" Label="id (påkrævet)" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_ifUnmodifiedSince" Label="If-Unmodified-Since (påkrævet)" HelperText="Last-Modified fra Get/Create, fx Fri, 27 Sep 2019 11:00:00 GMT" Variant="Variant.Outlined" />
+    <MudSelect T="ValidationMode?" @bind-Value="_validationMode" Label="validationMode" Variant="Variant.Outlined" Clearable="true">
+        <MudSelectItem T="ValidationMode?" Value="@ValidationMode.Validate">VALIDATE</MudSelectItem>
+        <MudSelectItem T="ValidationMode?" Value="@ValidationMode.ValidateFull">VALIDATE_FULL</MudSelectItem>
+    </MudSelect>
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+    <AnswersEditor Rows="_rows" />
+</ApiOperation>
+
+@code {
+    private readonly List<AnswerRow> _rows = [new()];
+    private string? _id;
+    private string? _ifUnmodifiedSince;
+    private ValidationMode? _validationMode;
+    private string? _acceptLanguage;
+
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.FillKnowledgeAndExperienceAsync(
+            _id!.Trim(),
+            new KnowledgeAndExperienceAnswers { Answers = InputParser.ToAnswers(_rows) },
+            _ifUnmodifiedSince!.Trim(),
+            _validationMode,
+            InputParser.NullIfEmpty(_acceptLanguage),
+            cancellationToken));
+}

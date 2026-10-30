@@ -1,0 +1,15 @@
+@page "/apis/client-profile/service/version"
+@inject IClientProfileClient Client
+
+<PageTitle>Version - Bloxx API Test</PageTitle>
+
+<ApiOperation Title="Version"
+              Method="GET"
+              Path="/client-profiling/version"
+              Description="Henter versionsoplysninger for servicen. Ingen parametre."
+              Execute="ExecuteAsync" />
+
+@code {
+    private async Task<ApiCallResult> ExecuteAsync(CancellationToken cancellationToken) =>
+        ApiCallResult.From(await Client.GetVersionAsync(cancellationToken));
+}
