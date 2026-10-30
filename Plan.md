@@ -383,9 +383,9 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [ ] Integrationstests mod Azurite.
 
 ### Fase 6 — CI/CD
-- [ ] `ci.yml` for PR.
-- [ ] `deploy-app.yml` ved push til `main` med smoke test.
-- [ ] GitHub environment `production` (evt. manuel godkendelse).
+- [x] `ci.yml` for PR (build/test, ApiSpecs-hash, `terraform validate`; køres altid, ikke kun ved `infra/**`).
+- [x] `deploy-app.yml` ved push til `main` med smoke test og rollback via `artifact-run-id`.
+- [x] GitHub environment `production` (uden manuel godkendelse).
 - [ ] Beslutning om staging (ekstra Web App på samme F1-plan eller ingen staging).
 - [ ] Easy Auth (Entra ID) aktiveret på Web App via Terraform.
 

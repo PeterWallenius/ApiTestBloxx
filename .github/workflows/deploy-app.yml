@@ -1,0 +1,104 @@
+name: Deploy app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'ApiSpecs/**'
+      - 'Directory.*.props'
+      - 'global.json'
+      - '.github/workflows/deploy-app.yml'
+  workflow_dispatch:
+    inputs:
+      artifact-run-id:
+        description: 'Rollback: run-id for en tidligere grøn kørsel, hvis artifact skal genudrulles uden nyt build'
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-app
+  cancel-in-progress: false
+
+jobs:
+  build-test:
+    name: Build, test and publish
+    if: ${{ inputs.artifact-run-id == '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore ApiTestBloxx.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build ApiTestBloxx.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test ApiTestBloxx.slnx -c Release --no-build
+
+      - name: Publish
+        run: dotnet publish src/ApiTestBloxx.Web -c Release --no-build -o publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: publish
+          retention-days: 30
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy to Azure
+    needs: build-test
+    if: ${{ !cancelled() && (needs.build-test.result == 'success' || needs.build-test.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: app
+          path: publish
+          run-id: ${{ inputs.artifact-run-id || github.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          package: publish
+
+      - name: Smoke test /health
+        env:
+          APP_URL: https://${{ secrets.AZURE_WEBAPP_NAME }}.azurewebsites.net
+        run: |
+          for attempt in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$APP_URL/health" || true)
+            echo "Forsøg $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "::error::/health svarede ikke 200 efter deploy"
+          exit 1

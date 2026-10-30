@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore ApiTestBloxx.slnx --locked-mode
+
+      - name: Build
+        run: dotnet build ApiTestBloxx.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test ApiTestBloxx.slnx -c Release --no-build
+
+  api-specs:
+    name: ApiSpecs match generated proxies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check spec hashes
+        shell: bash
+        run: |
+          status=0
+          for dir in ApiSpecs/*/; do
+            name=$(basename "$dir")
+            spec="${dir}spec.openapi.json"
+            proxy="src/ApiTestBloxx.Infrastructure/ApiClients/${name}.cs"
+            if [ ! -f "$spec" ]; then
+              echo "::error::${dir} mangler spec.openapi.json"; status=1; continue
+            fi
+            if [ ! -f "$proxy" ]; then
+              echo "::error::${proxy} mangler for ${spec}"; status=1; continue
+            fi
+            expected=$(tr -d '\r' < "$spec" | sha256sum | cut -d' ' -f1)
+            actual=$(grep -m1 'Spec SHA-256' "$proxy" | grep -oE '[0-9a-f]{64}' || true)
+            if [ "$expected" != "$actual" ]; then
+              echo "::error::${spec} er ændret uden at ${proxy} er regenereret (forventet hash ${expected}, fundet '${actual}')"; status=1
+            fi
+          done
+          exit $status
+
+  terraform:
+    name: Terraform validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Init (no backend)
+        run: terraform init -backend=false -input=false
+
+      - name: Validate
+        run: terraform validate
