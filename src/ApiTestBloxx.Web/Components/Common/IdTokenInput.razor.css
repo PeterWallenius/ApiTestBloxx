@@ -1,0 +1,17 @@
+.id-token-input ::deep .mud-input-label,
+.id-token-input ::deep .mud-input-label.mud-input-label-inputcontrol {
+    color: #fff;
+}
+
+.id-token-input ::deep .mud-input-outlined-border {
+    border-color: rgba(255, 255, 255, 0.7);
+}
+
+.id-token-input ::deep .mud-input:hover .mud-input-outlined-border,
+.id-token-input ::deep .mud-input.mud-focused .mud-input-outlined-border {
+    border-color: #fff;
+}
+
+.id-token-input ::deep input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
