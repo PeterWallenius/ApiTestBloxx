@@ -352,7 +352,7 @@ Log Analytics slås fra for at minimere omkostninger. Da nye Application Insight
 - [x] Terraform-konfiguration (App Service inkl. filesystem-logs, Storage, Key Vault, RBAC) i `infra/` — erstatter den første Bicep-version (CLAUDE.md kræver Terraform).
 - [x] Separat state-storage (`rg-apitestbloxx-tfstate`) + rolletildelinger + GitHub variables.
 - [x] `infra.yml` (fmt → init → validate → plan → apply).
-- [ ] Første kørsel af `infra.yml` med Terraform (ved push til `main`).
+- [x] Første kørsel af `infra.yml` med Terraform (ved push til `main`).
 - [ ] Giv udvikleren `Key Vault Secrets Officer` på Key Vault (manuelt).
 
 ### Fase 3 — API-spec og proxy
