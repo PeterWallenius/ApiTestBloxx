@@ -1,0 +1,187 @@
+@page "/tools/answer-builder"
+@using System.Globalization
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@inject IClientProfileClient Client
+
+<PageTitle>Answer builder - Bloxx API Test</PageTitle>
+
+<MudText Typo="Typo.h4">Answer builder</MudText>
+<MudText Class="mb-4">
+    Indtast id for at hente Last-Modified og spørgsmål (eller indsæt JSON), vælg et svar pr. spørgsmål, og kopiér det færdige svar-JSON til Fill.
+</MudText>
+
+<MudPaper Class="pa-4 mb-4" Outlined="true">
+    <MudStack Spacing="2">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudTextField @bind-Value="_id" Label="id" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" OnKeyUp="OnIdKeyUp" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadFromApiAsync" Disabled="@(_busy || string.IsNullOrWhiteSpace(_id))">Hent</MudButton>
+        </MudStack>
+        <MudExpansionPanels>
+            <MudExpansionPanel Text="Eller indsæt JSON">
+                <MudTextField @bind-Value="_json" Label="Risk profile JSON" Lines="8" Variant="Variant.Outlined" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2" OnClick="LoadFromJson" Disabled="@string.IsNullOrWhiteSpace(_json)">Indlæs JSON</MudButton>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+        @if (_busy)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+    </MudStack>
+</MudPaper>
+
+@if (_profile is not null)
+{
+    <MudText Typo="Typo.subtitle1" Class="mb-2">
+        Profil <code>@_profile.Id</code> - status <b>@_profile.Status</b>
+    </MudText>
+    @if (LastModified is not null)
+    {
+        <MudText Typo="Typo.body2" Class="mb-2"><b>Last-Modified:</b> <code>@LastModified</code></MudText>
+    }
+
+    @foreach (var group in _profile.QuestionGroups)
+    {
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudText Typo="Typo.h6" Class="mb-2">@(group.Title ?? group.Id)</MudText>
+            <MudStack Spacing="2">
+                @foreach (var question in group.Questions)
+                {
+                    var key = Key(group, question);
+                    <MudSelect T="string"
+                               Value="@GetSelected(key)"
+                               ValueChanged="@(v => _selected[key] = v)"
+                               Label="@question.Text"
+                               HelperText="@question.Id"
+                               Variant="Variant.Outlined"
+                               Clearable="true">
+                        @foreach (var answer in question.PossibleAnswers)
+                        {
+                            <MudSelectItem T="string" Value="@answer.AnswerId">@answer.Name (@answer.AnswerId)</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+
+    <MudPaper Class="pa-4 mb-4" Outlined="true">
+        <MudText Typo="Typo.h6" Class="mb-2">Svar-JSON (@AnswerCount valgt)</MudText>
+        <MudPaper Class="pa-3" Outlined="true" Style="overflow:auto;max-height:500px"><pre class="ma-0">@BuildAnswersJson()</pre></MudPaper>
+    </MudPaper>
+}
+
+@code {
+    private static readonly JsonSerializerOptions ReadOptions = new(JsonSerializerDefaults.Web);
+
+    private static readonly JsonSerializerOptions WriteOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    private readonly Dictionary<string, string?> _selected = [];
+    private RiskProfileQuestionnaire? _profile;
+    private string? _json;
+    private string? _id;
+    private string? _error;
+    private string? _lastModifiedHeader;
+    private bool _busy;
+
+    // Headeren foretrækkes; body-feltet (ISO 8601) er kun fallback ved indsat JSON.
+    private string? LastModified => ToHttpDate(_lastModifiedHeader ?? _profile?.LastModified);
+
+    private static string? ToHttpDate(string? value) =>
+        DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date)
+            ? date.UtcDateTime.ToString("R", CultureInfo.InvariantCulture)
+            : value;
+
+    private async Task OnIdKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_busy && !string.IsNullOrWhiteSpace(_id))
+        {
+            await LoadFromApiAsync();
+        }
+    }
+
+    private int AnswerCount => _selected.Values.Count(v => !string.IsNullOrEmpty(v));
+
+    // Spørgsmåls-id'er er ikke garanteret unikke på tværs af grupper.
+    private static string Key(QuestionGroup group, Question question) => $"{group.Id}/{question.Id}";
+
+    private string? GetSelected(string key) => _selected.GetValueOrDefault(key);
+
+    private void LoadFromJson()
+    {
+        try
+        {
+            _lastModifiedHeader = null;
+            SetProfile(JsonSerializer.Deserialize<RiskProfileQuestionnaire>(_json!, ReadOptions));
+        }
+        catch (JsonException ex)
+        {
+            _profile = null;
+            _error = $"Ugyldigt JSON: {ex.Message}";
+        }
+    }
+
+    private async Task LoadFromApiAsync()
+    {
+        _busy = true;
+        try
+        {
+            var response = await Client.GetRiskProfileAsync(_id!.Trim());
+            _lastModifiedHeader = response.LastModified;
+            SetProfile(response.Value);
+        }
+        catch (BloxxApiException ex)
+        {
+            _profile = null;
+            _error = ex.Message;
+        }
+        catch (HttpRequestException ex)
+        {
+            _profile = null;
+            _error = $"Kaldet kunne ikke gennemføres: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void SetProfile(RiskProfileQuestionnaire? profile)
+    {
+        _selected.Clear();
+        _profile = profile;
+        _error = profile is null ? "Profilen var tom." : null;
+
+        if (profile is null)
+        {
+            return;
+        }
+
+        foreach (var group in profile.QuestionGroups)
+        {
+            foreach (var question in group.Questions.Where(q => q.SelectedAnswerId is not null))
+            {
+                _selected[Key(group, question)] = question.SelectedAnswerId;
+            }
+        }
+    }
+
+    private string BuildAnswersJson()
+    {
+        var answers = _profile!.QuestionGroups
+            .SelectMany(g => g.Questions.Select(q => (Key: Key(g, q), Question: q)))
+            .Where(x => !string.IsNullOrEmpty(GetSelected(x.Key)))
+            .Select(x => new Answer { QuestionId = x.Question.Id, AnswerId = GetSelected(x.Key)! })
+            .ToList();
+
+        return JsonSerializer.Serialize(new RiskProfileAnswers { Answers = answers }, WriteOptions);
+    }
+}

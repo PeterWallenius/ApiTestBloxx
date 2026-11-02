@@ -100,8 +100,8 @@ public interface IClientProfileClient
     Task<BloxxResponse<HealthInfo>> GetHealthInfoAsync(CancellationToken cancellationToken = default);
 }
 
-internal sealed class ClientProfileClient(HttpClient httpClient, IBloxxTokenStore tokenStore)
-    : BloxxApiClientBase(httpClient, tokenStore), IClientProfileClient
+internal sealed class ClientProfileClient(HttpClient httpClient, IBloxxTokenStore tokenStore, IBloxxRequestLog requestLog)
+    : BloxxApiClientBase(httpClient, tokenStore, requestLog), IClientProfileClient
 {
     protected override string ApiPath => "client-profiling/";
 

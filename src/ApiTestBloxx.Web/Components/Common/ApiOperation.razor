@@ -1,5 +1,6 @@
 @using System.Diagnostics
 @using ApiTestBloxx.Application.Bloxx
+@inject IBloxxRequestLog RequestLog
 
 <MudText Typo="Typo.h4">@Title</MudText>
 <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-2">
@@ -22,6 +23,16 @@
 @if (_busy)
 {
     <MudProgressLinear Indeterminate="true" Class="mb-4" />
+}
+
+@if (_curl is not null)
+{
+    <MudExpansionPanels Class="mb-4">
+        <MudExpansionPanel Text="curl" Expanded="true">
+            <MudText Typo="Typo.caption">x-id-token er erstattet med &lt;ID_TOKEN&gt;.</MudText>
+            <MudPaper Class="pa-3 mt-1" Outlined="true" Style="overflow:auto;max-height:300px"><pre class="ma-0" style="white-space:pre-wrap;word-break:break-all">@_curl</pre></MudPaper>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
 }
 
 @if (_error is not null)
@@ -54,6 +65,7 @@
     private bool _busy;
     private string? _error;
     private string? _errorBody;
+    private string? _curl;
     private long _elapsedMs;
     private ApiCallResult? _result;
 
@@ -77,6 +89,8 @@
         _error = null;
         _errorBody = null;
         _result = null;
+        _curl = null;
+        RequestLog.LastCurl = null;
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -99,6 +113,7 @@
         finally
         {
             _elapsedMs = stopwatch.ElapsedMilliseconds;
+            _curl = RequestLog.LastCurl;
             _busy = false;
         }
     }

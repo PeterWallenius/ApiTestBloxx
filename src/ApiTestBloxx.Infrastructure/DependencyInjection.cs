@@ -1,4 +1,5 @@
 using ApiTestBloxx.Application.Bloxx;
+using ApiTestBloxx.Infrastructure.ApiClients;
 using ApiTestBloxx.Infrastructure.ApiClients.ClientProfile;
 using ApiTestBloxx.Infrastructure.Authentication;
 using ApiTestBloxx.Infrastructure.Configuration;
@@ -19,6 +20,7 @@ public static class DependencyInjection
 
         // Scoped = one token per Blazor circuit; typed clients take it from the caller's scope.
         services.AddScoped<IBloxxTokenStore, BloxxTokenStore>();
+        services.AddScoped<IBloxxRequestLog, BloxxRequestLog>();
 
         services.AddHttpClient<IClientProfileClient, ClientProfileClient>(ConfigureBloxxClient)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });

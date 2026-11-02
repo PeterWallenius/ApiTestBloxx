@@ -6,7 +6,7 @@ using ApiTestBloxx.Application.Bloxx;
 
 namespace ApiTestBloxx.Infrastructure.ApiClients;
 
-internal abstract class BloxxApiClientBase(HttpClient httpClient, IBloxxTokenStore tokenStore)
+internal abstract class BloxxApiClientBase(HttpClient httpClient, IBloxxTokenStore tokenStore, IBloxxRequestLog requestLog)
 {
     private const string TokenHeader = "x-id-token";
 
@@ -114,10 +114,15 @@ internal abstract class BloxxApiClientBase(HttpClient httpClient, IBloxxTokenSto
             }
         }
 
+        string? bodyText = null;
         if (body is not null)
         {
             request.Content = JsonContent.Create(body, body.GetType(), options: JsonOptions);
+            bodyText = await request.Content.ReadAsStringAsync(cancellationToken);
         }
+
+        // The real token is never written to the log.
+        requestLog.LastCurl = CurlFormatter.Format(httpClient, request, bodyText, TokenHeader, "<ID_TOKEN>");
 
         return await httpClient.SendAsync(request, cancellationToken);
     }
