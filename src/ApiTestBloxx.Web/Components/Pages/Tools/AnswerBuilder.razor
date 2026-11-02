@@ -31,6 +31,10 @@
         {
             <MudAlert Severity="Severity.Error">@_error</MudAlert>
         }
+        @if (_info is not null)
+        {
+            <MudAlert Severity="Severity.Success">@_info</MudAlert>
+        }
     </MudStack>
 </MudPaper>
 
@@ -54,7 +58,7 @@
                     var key = Key(group, question);
                     <MudSelect T="string"
                                Value="@GetSelected(key)"
-                               ValueChanged="@(v => _selected[key] = v)"
+                               ValueChanged="@(v => OnAnswerChangedAsync(key, question, v))"
                                Label="@question.Text"
                                HelperText="@question.Id"
                                Variant="Variant.Outlined"
@@ -89,6 +93,7 @@
     private string? _json;
     private string? _id;
     private string? _error;
+    private string? _info;
     private string? _lastModifiedHeader;
     private bool _busy;
 
@@ -114,6 +119,48 @@
     private static string Key(QuestionGroup group, Question question) => $"{group.Id}/{question.Id}";
 
     private string? GetSelected(string key) => _selected.GetValueOrDefault(key);
+
+    private async Task OnAnswerChangedAsync(string key, Question question, string? answerId)
+    {
+        var previous = GetSelected(key);
+        _selected[key] = answerId;
+        _info = null;
+
+        // Et fravalg kan ikke sendes som svar, så det forbliver lokalt.
+        if (string.IsNullOrEmpty(answerId) || LastModified is null)
+        {
+            _error = string.IsNullOrEmpty(answerId) ? null : "Last-Modified mangler - svaret er ikke sendt til API'et.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var answers = new RiskProfileAnswers
+            {
+                Answers = [new Answer { QuestionId = question.Id, AnswerId = answerId, Justification = InputParser.DefaultJustification }],
+            };
+            var response = await Client.FillRiskProfileAsync(_profile!.Id, answers, LastModified);
+            _lastModifiedHeader = response.LastModified;
+            _profile = response.Value;
+            _error = null;
+            _info = $"Svar for {question.Id} sendt (PUT).";
+        }
+        catch (BloxxApiException ex)
+        {
+            _selected[key] = previous;
+            _error = ex.Message;
+        }
+        catch (HttpRequestException ex)
+        {
+            _selected[key] = previous;
+            _error = $"Kaldet kunne ikke gennemføres: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private void LoadFromJson()
     {
@@ -158,6 +205,7 @@
     {
         _selected.Clear();
         _profile = profile;
+        _info = null;
         _error = profile is null ? "Profilen var tom." : null;
 
         if (profile is null)
