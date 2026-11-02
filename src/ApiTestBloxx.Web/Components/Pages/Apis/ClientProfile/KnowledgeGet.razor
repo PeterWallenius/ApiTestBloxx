@@ -10,7 +10,7 @@
               CanSend="@(!string.IsNullOrWhiteSpace(_id))"
               Execute="ExecuteAsync">
     <MudTextField @bind-Value="_id" Label="id (påkrævet)" Variant="Variant.Outlined" />
-    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="en-US (standard)" Variant="Variant.Outlined" />
 </ApiOperation>
 
 @code {

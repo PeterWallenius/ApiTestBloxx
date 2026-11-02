@@ -9,6 +9,8 @@ namespace ApiTestBloxx.Infrastructure.ApiClients;
 internal abstract class BloxxApiClientBase(HttpClient httpClient, IBloxxTokenStore tokenStore, IBloxxRequestLog requestLog)
 {
     private const string TokenHeader = "x-id-token";
+    private const string AcceptLanguageHeader = "Accept-Language";
+    private const string DefaultAcceptLanguage = "en-US";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -112,6 +114,11 @@ internal abstract class BloxxApiClientBase(HttpClient httpClient, IBloxxTokenSto
             {
                 request.Headers.TryAddWithoutValidation(name, value);
             }
+        }
+
+        if (!request.Headers.Contains(AcceptLanguageHeader))
+        {
+            request.Headers.TryAddWithoutValidation(AcceptLanguageHeader, DefaultAcceptLanguage);
         }
 
         string? bodyText = null;

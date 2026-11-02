@@ -10,7 +10,7 @@
               CanSend="@(InputParser.SplitList(_ownerIds).Length > 0)"
               Execute="ExecuteAsync">
     <MudTextField @bind-Value="_ownerIds" Label="ownerId (påkrævet)" HelperText="Ét eller flere person-id'er, adskilt af komma eller linjeskift" Lines="2" Variant="Variant.Outlined" />
-    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="da" Variant="Variant.Outlined" />
+    <MudTextField @bind-Value="_acceptLanguage" Label="Accept-Language (valgfri)" Placeholder="en-US (standard)" Variant="Variant.Outlined" />
 </ApiOperation>
 
 @code {
