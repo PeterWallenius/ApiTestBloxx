@@ -179,7 +179,7 @@
         var answers = _profile!.QuestionGroups
             .SelectMany(g => g.Questions.Select(q => (Key: Key(g, q), Question: q)))
             .Where(x => !string.IsNullOrEmpty(GetSelected(x.Key)))
-            .Select(x => new Answer { QuestionId = x.Question.Id, AnswerId = GetSelected(x.Key)! })
+            .Select(x => new Answer { QuestionId = x.Question.Id, AnswerId = GetSelected(x.Key)!, Justification = InputParser.DefaultJustification })
             .ToList();
 
         return JsonSerializer.Serialize(new RiskProfileAnswers { Answers = answers }, WriteOptions);

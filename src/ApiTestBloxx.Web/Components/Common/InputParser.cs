@@ -8,11 +8,13 @@ public sealed class AnswerRow
 
     public string? AnswerId { get; set; }
 
-    public string? Justification { get; set; }
+    public string? Justification { get; set; } = InputParser.DefaultJustification;
 }
 
 public static class InputParser
 {
+    public const string DefaultJustification = "API101";
+
     private static readonly char[] ListSeparators = [',', ';', '\n', '\r'];
 
     /// <summary>Splits on comma, semicolon and line breaks; trims and drops empty entries.</summary>
